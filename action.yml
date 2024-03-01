@@ -1,0 +1,170 @@
+name: 'ReplaceTokens'
+description: 'Replace tokens in text files with variables and/or secrets.'
+author: 'Guillaume ROUCHON'
+branding:
+  icon: 'repeat'
+  color: 'purple'
+
+inputs:
+  sources:
+    description: >
+      A multiline list of files to replace tokens in.
+      Each line supports:
+        - multiple globbing patterns separated by a semi-colon ';' using fast-glob syntax 
+          (you must always use forward slash '/' as a directory separator)
+        - outputing the result in another file adding the output path after an arrow '=>' 
+          (if the output path is a relative path, it will be relative to the input file)
+        - wildcard replacement in the output file name using an asterix '*' in the input and 
+          output file names
+
+      Example: '**/*.json; !local/ => out/*.json' will match all files ending with '.json' in 
+      all directories and sub directories except in `local` directory and the output will be in a 
+      sub directory `out` relative to the input file keeping the file name.
+    required: true
+  variables:
+    description: >
+      A JSON serialized object containing the variables values. The object can be:
+        - an object: properties will be parsed as key/value pairs
+        - a string starting with '@': value is parsed as a path to a JSON file
+        - a string starting with '$': value is parsed as an environment variable name 
+          containing JSON encoded key/value pairs
+        - an array: each item must be an object or a string and will be parsed as specified 
+          previously
+
+      Multiple entries are merge into a single list of key/value pairs.
+
+      Example: '[${ toJSON(vars) }}, ${ toJSON(secrets) }}]' will pass all defined variables 
+      and secrets.
+    required: true
+  add-bom:
+    description: 'Add BOM when writing files.'
+    default: 'false'
+  chars-to-escape:
+    description: 'The characters to escape when using ''custom'' escape.'
+  encoding:
+    description: >
+      Encoding to read and write all files.
+
+      Accepted values:
+        - auto: detect encoding using js-chardet
+        - any value supported by iconv-lite
+    default: auto
+  escape:
+    description: >
+      Character escape type to apply on each value.
+      
+      Accepted values:
+        - auto: automatically apply JSON or XML escape based on file extension
+        - off: don't escape values
+        - json: JSON escape
+        - xml: XML escape
+        - custom: apply custom escape using escape-char and chars-to-escape
+    default: 'auto'
+  escape-char:
+    description: 'The escape character to use when using custom escape.'
+  if-no-files-found:
+    description: 'The behavior if no files are found: ignore, warn, error.'
+    default: 'ignore'
+  log-level:
+    description: >
+      The log level.
+
+      Accepted values:
+        - debug
+        - info
+        - warn
+        - error
+
+      Debug messages will always be sent to the internal debug system.
+      Error messages will always fail the action.
+    default: 'info'
+  missing-var-action:
+    description: >
+      The behavior if variable is not found.
+
+      Accepted values:
+        - none: replace the token with an empty string and log a message
+        - keep: leave the token and log a message
+        - replace: replace with the value from missing-var-default and do not 
+          log a message
+    default: 'none'
+  missing-var-default:
+    description: 'Default value when variable is not found.'
+    default: ''
+  missing-var-log:
+    description: >
+      The level to log key not found messages.
+
+      Accepted values:
+        - off
+        - warn
+        - error
+    default: 'warn'
+  recursive:
+    description: 'Enable token replacements in values recusively.'
+    default: 'false'
+  root:
+    description: 'The root path to use for relative paths in sources.'
+    default: ${{ github.workspace }}
+  separator:
+    description: >
+      The separtor to use when flattening keys in variables.
+
+      Example: '{ "key": { "array": ["a1", "a2"], "sub": "s1" } }' will be flatten as 
+      '{ "key.array.0": "a1", "key.array.1": "a2", "key.sub": "s1" }'
+    default: '.'
+  token-pattern:
+    description: >
+      The token pattern to use.
+
+      Accepted values:
+        - default: #{ ... }#
+        - azurepipelines: $( ... )
+        - custom: token-prefix ... token-suffix
+        - doublebraces: {{ ... }}
+        - doubleunderscores: __ ... __
+        - githubactions: #{{ ... }}
+        - octopus: #{ ... }
+    default: 'default'
+  token-prefix:
+    description: 'The token prefix when using ''custom'' token pattern.'
+  token-suffix:
+    description: 'The token suffix when using ''custom'' token pattern.'
+  transforms:
+    description: >
+      Enable transforms on values.
+      The syntax to apply transform on a value is '#{<transform>(<name>[,<parameters>])}#'.
+
+      Supported transforms:
+        - base64(name): base64 encode the value
+        - indent(name[, size, firstline]): indent lines in the value where size is the 
+          indent size (default is '2') and firstline specifies if the first line must be 
+          indented also (default is 'false')
+        - lower(name): lowercase the value
+        - raw(name): raw value (disable escaping)
+        - upper(name): uppercase the value
+
+      Example: 'key=#{upper(KEY1)}#' with '{ "KEY1": "value1" }' will result in 'key=VALUE1'
+    default: 'false'
+  transforms-prefix:
+    description: 'The tranforms prefix when using transforms.'
+    default: '('
+  transforms-suffix:
+    description: 'The tranforms suffix when using transforms.'
+    default: ')'
+
+outputs:
+  defaults:
+    description: 'Number of tokens replaced by the default value.'
+  files:
+    description: 'Number of files processed.'
+  replaced:
+    description: 'Number of tokens replaced with a value.'
+  tokens:
+    description: 'Number of tokens found.'
+  transforms:
+    description: 'Number of transforms applied.'
+
+runs:
+  using: node20
+  main: dist/index.js

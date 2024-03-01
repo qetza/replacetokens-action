@@ -1,0 +1,7 @@
+{
+  "var1": "#{VAR1}#",
+  "var2": "#{base64(VAR2)}#",
+  "var3": "#{VAR3}#",
+  "var4": "#{upper(VAR4)}#",
+  "secret1": "#{SECRET1}#"
+}

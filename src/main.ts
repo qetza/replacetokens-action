@@ -1,0 +1,196 @@
+import * as core from '@actions/core';
+import {
+  readTextFile,
+  merge,
+  replaceTokens,
+  Defaults,
+  Encodings,
+  Escapes,
+  MissingVariables,
+  Options,
+  TokenPatterns
+} from '@qetza/replacetokens';
+
+export async function run(): Promise<void> {
+  const _debug = console.debug;
+  const _info = console.info;
+  const _warn = console.warn;
+  const _error = console.error;
+  const _group = console.group;
+  const _groupEnd = console.groupEnd;
+
+  try {
+    // read and validate inputs
+    const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
+    const variables = await parseVariables(core.getInput('variables', { required: true, trimWhitespace: true }));
+    const options: Options = {
+      addBOM: core.getBooleanInput('add-bom'),
+      encoding: core.getInput('encoding') || Encodings.Auto,
+      escape: {
+        chars: core.getInput('chars-to-escape'),
+        escapeChar: core.getInput('escape-char'),
+        type:
+          getChoiceInput('escape', [Escapes.Auto, Escapes.Custom, Escapes.Json, Escapes.Off, Escapes.Xml]) ||
+          Escapes.Auto
+      },
+      missing: {
+        action:
+          getChoiceInput('missing-var-action', [
+            MissingVariables.Action.Keep,
+            MissingVariables.Action.None,
+            MissingVariables.Action.Replace
+          ]) || MissingVariables.Action.None,
+        default: core.getInput('missing-var-default'),
+        log:
+          getChoiceInput('missing-var-log', [
+            MissingVariables.Log.Error,
+            MissingVariables.Log.Off,
+            MissingVariables.Log.Warn
+          ]) || MissingVariables.Log.Warn
+      },
+      recursive: core.getBooleanInput('recursive'),
+      root: core.getInput('root'),
+      separator: core.getInput('separator') || Defaults.Separator,
+      token: {
+        pattern:
+          getChoiceInput('token-pattern', [
+            TokenPatterns.AzurePipelines,
+            TokenPatterns.Custom,
+            TokenPatterns.Default,
+            TokenPatterns.DoubleBraces,
+            TokenPatterns.DoubleUnderscores,
+            TokenPatterns.GithubActions,
+            TokenPatterns.Octopus
+          ]) || TokenPatterns.Default,
+        prefix: core.getInput('token-prefix'),
+        suffix: core.getInput('token-suffix')
+      },
+      transforms: {
+        enabled: core.getBooleanInput('transforms'),
+        prefix: core.getInput('transforms-prefix') || Defaults.TransformPrefix,
+        suffix: core.getInput('transforms-suffix') || Defaults.TransformSuffix
+      }
+    };
+
+    // override console logs
+    const logLevel = parseLogLevel(getChoiceInput('log-level', ['debug', 'info', 'warn', 'error']));
+    console.debug = function (...args) {
+      core.debug(args.join(' ')); // always debug to core
+
+      if (logLevel === LogLevel.Debug) core.info(args.join(' ')); // log as info to be independant of core switch
+    };
+    console.info = function (...args) {
+      if (logLevel < LogLevel.Warn) core.info(args.join(' '));
+    };
+    console.warn = function (...args) {
+      if (logLevel < LogLevel.Error) core.warning(args.join(' '));
+    };
+    console.error = function (...args) {
+      core.setFailed(args.join(' ')); // always set failure on error
+    };
+    console.group = function (...args) {
+      core.startGroup(args.join(' '));
+    };
+    console.groupEnd = function () {
+      core.endGroup();
+    };
+
+    // replace tokens
+    const result = await replaceTokens(sources, variables, options);
+
+    if (result.files === 0) {
+      switch (getChoiceInput('if-no-files-found', ['ignore', 'warn', 'error']) || 'ignore') {
+        case 'warn':
+          core.warning('No files were found with provided sources.');
+        case 'error':
+          core.setFailed('No files were found with provided sources.');
+        default:
+          core.info('No files were found with provided sources.');
+      }
+    }
+
+    // set outputs
+    core.setOutput('defaults', result.defaults);
+    core.setOutput('files', result.files);
+    core.setOutput('replaced', result.replaced);
+    core.setOutput('tokens', result.tokens);
+    core.setOutput('transforms', result.transforms);
+  } catch (error) {
+    if (error instanceof Error) core.setFailed(error.message);
+  } finally {
+    // restore console logs
+    console.debug = _debug;
+    console.info = _info;
+    console.warn = _warn;
+    console.error = _error;
+    console.group = _group;
+    console.groupEnd = _groupEnd;
+  }
+}
+
+function getChoiceInput(name: string, choices: string[], options?: core.InputOptions): string {
+  const input = core.getInput(name, options).trim();
+
+  if (!input || choices.includes(input)) return input;
+
+  throw new TypeError(`Unsupported value for input: ${name}\nSupport input list: '${choices.join(' | ')}'`);
+}
+
+async function parseVariables(input: string): Promise<{ [key: string]: any }> {
+  input = input || '{}';
+  const variables = JSON.parse(input);
+
+  let load = async (v: any) => {
+    if (typeof v === 'string') {
+      switch (v[0]) {
+        case '@':
+          core.debug(`loading variables from file '${v.substring(1)}'`);
+
+          return JSON.parse((await readTextFile(v.substring(1))).content || '{}');
+        case '$':
+          core.debug(`loading variables from environment '${v.substring(1)}'`);
+
+          return JSON.parse(process.env[v.substring(1)] || '{}');
+        default:
+          throw new Error(
+            "Unsupported value for: variables\nString values starts with '@' (file path) or '$' (environment variable)"
+          );
+      }
+    }
+
+    return v;
+  };
+
+  if (Array.isArray(variables)) {
+    // merge inputs
+    const vars: { [key: string]: any }[] = [];
+    for (let v of variables) {
+      vars.push(await load(v));
+    }
+
+    return merge(...vars);
+  }
+
+  return await load(variables);
+}
+
+enum LogLevel {
+  Debug,
+  Info,
+  Warn,
+  Error
+}
+function parseLogLevel(level: string): LogLevel {
+  switch (level) {
+    case 'debug':
+      return LogLevel.Debug;
+    case 'info':
+      return LogLevel.Info;
+    case 'warn':
+      return LogLevel.Warn;
+    case 'error':
+      return LogLevel.Error;
+    default:
+      return LogLevel.Info;
+  }
+}

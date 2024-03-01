@@ -1,0 +1,7 @@
+<settings>
+  <var1>#{base64(VAR1)}#</var1>
+  <var2>#{lower(VAR2)}#</var2>
+  <var3>#{VAR3}#</var3>
+  <var4>#{VAR4}#</var4>
+  <secret1>#{SECRET1}#</secret1>
+</setting>

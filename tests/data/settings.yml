@@ -1,0 +1,6 @@
+vars:
+  - #{indent(VAR1)}#
+  - #{VAR2}#
+  - #{upper(VAR3)}#
+  - #{VAR4}#
+  - #{SECRET2}#

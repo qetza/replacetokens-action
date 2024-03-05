@@ -1,7 +1,7 @@
 # ReplaceTokens
 [![CI](https://github.com/qetza/replacetokens-action/actions/workflows/ci.yml/badge.svg)](https://github.com/qetza/replacetokens-action/actions/workflows/ci.yml) [![mit license](https://img.shields.io/badge/license-MIT-green)](https://github.com/qetza/replacetokens-action/blob/main/LICENSE) [![donate](https://img.shields.io/badge/donate-paypal-blue)](https://www.paypal.com/donate/?hosted_button_id=CCEAVYA8DUFD8)
 
-Replace tokens in text files with variables and/or secrets.
+This GitHub Action replaces tokens in text files with variables and/or secrets.
 
 ## What's new
 Please refer to the [release page](https://github.com/qetza/replacetokens-action/releases) for the latest release notes.

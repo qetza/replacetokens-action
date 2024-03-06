@@ -13,16 +13,16 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
   with:
     # A multiline list of files to replace tokens in.
     # Each line supports:
-    #   - multiple globbing patterns separated by a semi-colon ';' using fast-glob syntax 
+    #   - multiple glob patterns separated by a semi-colon ';' using fast-glob syntax 
     #     (you must always use forward slash '/' as a directory separator)
     #   - outputing the result in another file adding the output path after an arrow '=>' 
     #     (if the output path is a relative path, it will be relative to the input file)
-    #   - wildcard replacement in the output file name using an asterix '*' in the input and 
-    #     output file names
+    #   - wildcard replacement in the output file name using an asterix '*' in the input 
+    #     and output file names
     #
-    # Example: '**/*.json; !local/ => out/*.json' will match all files ending with '.json' in 
-    # all directories and sub directories except in `local` directory and the output will be in a 
-    # sub directory `out` relative to the input file keeping the file name.
+    # Example: '**/*.json; !local/ => out/*.json' will match all files ending with '.json' 
+    # in all directories and sub directories except in `local` directory and the output 
+    # will be in a sub directory `out` relative to the input file keeping the file name.
     #
     # Required.
     sources: ''
@@ -32,13 +32,13 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     #   - a string starting with '@': value is parsed as a path to a JSON file
     #   - a string starting with '$': value is parsed as an environment variable name 
     #     containing JSON encoded key/value pairs
-    #   - an array: each item must be an object or a string and will be parsed as specified 
-    #     previously
+    #   - an array: each item must be an object or a string and will be parsed as 
+    #     specified previously
     #  
     # Multiple entries are merge into a single list of key/value pairs.
     #
-    # Example: '[${{ toJSON(vars) }}, ${{ toJSON(secrets) }}]' will pass all defined variables 
-    # and secrets.
+    # Example: '[${{ toJSON(vars) }}, ${{ toJSON(secrets) }}]' will pass all defined 
+    # variables and secrets.
     #
     # Required.
     variables: ''
@@ -131,13 +131,13 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
 
     # Enable token replacements in values recusively.
     #
-    # Example: '#{message}#' with variables '{ "message": "hello #{name}#!", "name": "world" }' 
+    # Example: '#{message}#' with variables '{"message":"hello #{name}#!","name":"world"}' 
     # will result in 'hello world!'
     #
     # Optional. Default: false
     recursive: ''
 
-    # The root path to use for relative paths in sources.
+    # The root path to use when reading input source files with relative paths.
     #
     # Optional. Default: ${{ github.workspace }}
     root: ''
@@ -186,7 +186,8 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     #   - raw(name): raw value (disable escaping)
     #   - upper(name): uppercase the value
     #
-    # Example: 'key=#{upper(KEY1)}#' with '{ "KEY1": "value1" }' will result in 'key=VALUE1'
+    # Example: 'key=#{upper(KEY1)}#' with '{ "KEY1": "value1" }' will result in 
+    # 'key=VALUE1'
     #
     # Optional. Default: false
     transforms: ''
@@ -229,11 +230,11 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     sources: '**/*.yml'
     variables: >
       [
-        ${{ toJSON(vars) }},                                                    # variables
-        ${{ toJSON(secrets) }},                                                 # secrets
-        ${{ toJSON(format('@{0}/tests/data/vars.json', github.workspace)) }},   # read from file
-        "$ENV_VARS",                                                            # read from env
-        { "VAR2": "inline_value2" }                                             # inline values
+        ${{ toJSON(vars) }},                                                  # variables
+        ${{ toJSON(secrets) }},                                               # secrets
+        ${{ toJSON(format('@{0}/tests/data/vars.json', github.workspace)) }}, # read from file
+        "$ENV_VARS",                                                          # read from env
+        { "VAR2": "${{ github.event.inputs.var2 }}" }                         # inline values
       ]
   env:
     ENV_VARS: '{ "VAR4": "env_value4" }'
@@ -246,6 +247,7 @@ steps:
   id: replace-tokens
   with:
     sources: '**/*.yml'
+    variables: '[${{ toJSON(vars) }},${{ toJSON(secrets) }}]'
 - run: |
     echo "defaults  : ${{ steps.replace-tokens.outputs.defaults }}"
     echo "files     : ${{ steps.replace-tokens.outputs.files }}"

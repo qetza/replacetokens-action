@@ -10,6 +10,7 @@ import {
   Options,
   TokenPatterns
 } from '@qetza/replacetokens';
+import * as fg from 'fast-glob';
 import stripJsonComments from './strip-json-comments';
 
 export async function run(): Promise<void> {
@@ -22,8 +23,6 @@ export async function run(): Promise<void> {
 
   try {
     // read and validate inputs
-    const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
-    const variables = await parseVariables(core.getInput('variables', { required: true, trimWhitespace: true }));
     const options: Options = {
       addBOM: core.getBooleanInput('add-bom'),
       encoding: core.getInput('encoding') || Encodings.Auto,
@@ -72,6 +71,12 @@ export async function run(): Promise<void> {
         suffix: core.getInput('transforms-suffix') || Defaults.TransformSuffix
       }
     };
+
+    const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
+    const variables = await parseVariables(
+      core.getInput('variables', { required: true, trimWhitespace: true }),
+      options.root || process.cwd()
+    );
 
     // override console logs
     const logLevel = parseLogLevel(getChoiceInput('log-level', ['debug', 'info', 'warn', 'error']));
@@ -137,22 +142,22 @@ function getChoiceInput(name: string, choices: string[], options?: core.InputOpt
   throw new TypeError(`Unsupported value for input: ${name}\nSupport input list: '${choices.join(' | ')}'`);
 }
 
-async function parseVariables(input: string): Promise<{ [key: string]: any }> {
+async function parseVariables(input: string, root: string): Promise<{ [key: string]: any }> {
   input = input || '{}';
   const variables = JSON.parse(stripJsonComments(input));
 
   let load = async (v: any) => {
     if (typeof v === 'string') {
       switch (v[0]) {
-        case '@':
-          core.debug(`loading variables from file '${v.substring(1)}'`);
+        case '@': // single string referencing a file
+          return await loadVariablesFromFile(v.substring(1), root);
 
-          return JSON.parse(stripJsonComments((await readTextFile(v.substring(1))).content || '{}'));
-        case '$':
+        case '$': // single string referencing environment variable
           core.debug(`loading variables from environment '${v.substring(1)}'`);
 
           return JSON.parse(stripJsonComments(process.env[v.substring(1)] || '{}'));
-        default:
+
+        default: // unsupported
           throw new Error(
             "Unsupported value for: variables\nString values starts with '@' (file path) or '$' (environment variable)"
           );
@@ -173,6 +178,27 @@ async function parseVariables(input: string): Promise<{ [key: string]: any }> {
   }
 
   return await load(variables);
+}
+
+async function loadVariablesFromFile(name: string, root: string): Promise<{ [key: string]: any }> {
+  var files = await fg.glob(
+    name.split(';').map(v => v.trim()),
+    {
+      absolute: true,
+      cwd: root,
+      onlyFiles: true,
+      unique: true
+    }
+  );
+
+  const vars: { [key: string]: any }[] = [];
+  for (const file of files) {
+    core.debug(`loading variables from file '${file}'`);
+
+    vars.push(JSON.parse(stripJsonComments((await readTextFile(file)).content || '{}')));
+  }
+
+  return merge(...vars);
 }
 
 enum LogLevel {

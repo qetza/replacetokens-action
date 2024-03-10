@@ -43522,6 +43522,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const replacetokens_1 = __nccwpck_require__(9633);
+const fg = __importStar(__nccwpck_require__(3664));
 const strip_json_comments_1 = __importDefault(__nccwpck_require__(77));
 async function run() {
     const _debug = console.debug;
@@ -43532,8 +43533,6 @@ async function run() {
     const _groupEnd = console.groupEnd;
     try {
         // read and validate inputs
-        const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
-        const variables = await parseVariables(core.getInput('variables', { required: true, trimWhitespace: true }));
         const options = {
             addBOM: core.getBooleanInput('add-bom'),
             encoding: core.getInput('encoding') || replacetokens_1.Encodings.Auto,
@@ -43578,6 +43577,8 @@ async function run() {
                 suffix: core.getInput('transforms-suffix') || replacetokens_1.Defaults.TransformSuffix
             }
         };
+        const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
+        const variables = await parseVariables(core.getInput('variables', { required: true, trimWhitespace: true }), options.root || process.cwd());
         // override console logs
         const logLevel = parseLogLevel(getChoiceInput('log-level', ['debug', 'info', 'warn', 'error']));
         console.debug = function (...args) {
@@ -43641,19 +43642,18 @@ function getChoiceInput(name, choices, options) {
         return input;
     throw new TypeError(`Unsupported value for input: ${name}\nSupport input list: '${choices.join(' | ')}'`);
 }
-async function parseVariables(input) {
+async function parseVariables(input, root) {
     input = input || '{}';
     const variables = JSON.parse((0, strip_json_comments_1.default)(input));
     let load = async (v) => {
         if (typeof v === 'string') {
             switch (v[0]) {
-                case '@':
-                    core.debug(`loading variables from file '${v.substring(1)}'`);
-                    return JSON.parse((0, strip_json_comments_1.default)((await (0, replacetokens_1.readTextFile)(v.substring(1))).content || '{}'));
-                case '$':
+                case '@': // single string referencing a file
+                    return await loadVariablesFromFile(v.substring(1), root);
+                case '$': // single string referencing environment variable
                     core.debug(`loading variables from environment '${v.substring(1)}'`);
                     return JSON.parse((0, strip_json_comments_1.default)(process.env[v.substring(1)] || '{}'));
-                default:
+                default: // unsupported
                     throw new Error("Unsupported value for: variables\nString values starts with '@' (file path) or '$' (environment variable)");
             }
         }
@@ -43668,6 +43668,20 @@ async function parseVariables(input) {
         return (0, replacetokens_1.merge)(...vars);
     }
     return await load(variables);
+}
+async function loadVariablesFromFile(name, root) {
+    var files = await fg.glob(name.split(';').map(v => v.trim()), {
+        absolute: true,
+        cwd: root,
+        onlyFiles: true,
+        unique: true
+    });
+    const vars = [];
+    for (const file of files) {
+        core.debug(`loading variables from file '${file}'`);
+        vars.push(JSON.parse((0, strip_json_comments_1.default)((await (0, replacetokens_1.readTextFile)(file)).content || '{}')));
+    }
+    return (0, replacetokens_1.merge)(...vars);
 }
 var LogLevel;
 (function (LogLevel) {

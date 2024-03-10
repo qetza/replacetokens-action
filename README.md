@@ -30,7 +30,8 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     # A JSON serialized object containing the variables values.
     # The object can be:
     #   - an object: properties will be parsed as key/value pairs
-    #   - a string starting with '@': value is parsed as a path to a JSON file
+    #   - a string starting with '@': value is parsed as multiple glob patterns separated 
+    #     by a semi-colon ';' using fast-glob syntax to JSON files
     #   - a string starting with '$': value is parsed as an environment variable name 
     #     containing JSON encoded key/value pairs
     #   - an array: each item must be an object or a string and will be parsed as 
@@ -139,7 +140,7 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     # Optional. Default: false
     recursive: ''
 
-    # The root path to use when reading input source files with relative paths.
+    # The root path to use when reading files with a relative path.
     #
     # Optional. Default: ${{ github.workspace }}
     root: ''
@@ -232,11 +233,12 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     sources: '**/*.yml'
     variables: >
       [
-        ${{ toJSON(vars) }},                                                  # variables
-        ${{ toJSON(secrets) }},                                               # secrets
-        ${{ toJSON(format('@{0}/tests/data/vars.json', github.workspace)) }}, # read from file
-        "$ENV_VARS",                                                          # read from env
-        { "VAR2": "${{ github.event.inputs.var2 }}" }                         # inline values
+        ${{ toJSON(vars) }},                                           # variables
+        ${{ toJSON(secrets) }},                                        # secrets
+        ${{ toJSON(format('@{0}/settings.json', github.workspace)) }}, # read from file
+        "@**/vars.(json|jsonc);!**/local/*"                            # read from files
+        "$ENV_VARS",                                                   # read from env
+        { "VAR2": "${{ github.event.inputs.var2 }}" }                  # inline values
       ]
   env:
     ENV_VARS: '{ "VAR4": "env_value4" }'

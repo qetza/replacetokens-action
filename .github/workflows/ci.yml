@@ -63,7 +63,7 @@ jobs:
               ${{ toJSON(vars) }},
               ${{ toJSON(secrets) }},
               { "VAR2": "#{inline}#value2", "inline": "inline_" },
-              ${{ toJSON(format('@{0}/tests/data/vars.json', github.workspace)) }},
+              ${{ toJSON(format('@{0}/tests/data/vars.jsonc', github.workspace)) }},
               "$ENV_VARS"
             ]
           root: ${{ github.workspace }}/tests

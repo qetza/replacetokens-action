@@ -27,7 +27,8 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     # Required.
     sources: ''
 
-    # A JSON serialized object containing the variables values. The object can be:
+    # A JSON serialized object containing the variables values.
+    # The object can be:
     #   - an object: properties will be parsed as key/value pairs
     #   - a string starting with '@': value is parsed as a path to a JSON file
     #   - a string starting with '$': value is parsed as an environment variable name 
@@ -35,7 +36,8 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     #   - an array: each item must be an object or a string and will be parsed as 
     #     specified previously
     #  
-    # Multiple entries are merge into a single list of key/value pairs.
+    # Multiple entries are merge into a single list of key/value pairs and all JSON 
+    # supports comments.
     #
     # Example: '[${{ toJSON(vars) }}, ${{ toJSON(secrets) }}]' will pass all defined 
     # variables and secrets.

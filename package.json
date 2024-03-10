@@ -1,6 +1,6 @@
 {
   "name": "replacetokens-action",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "An action to replace tokens with variables and/or secrets.",
   "private": true,
   "author": "Guillaume ROUCHON",
@@ -21,7 +21,7 @@
     "url": "https://github.com/qetza/replacetokens-action"
   },
   "exports": {
-    ".": "dist/index.js"
+    ".": "./dist/index.js"
   },
   "engines": {
     "node": ">=16"
@@ -29,7 +29,7 @@
   "scripts": {
     "build": "npm run format && npm run package",
     "format": "prettier --write **/*.ts",
-    "format-check": "prettier --check **/*.ts",
+    "format:check": "prettier --check **/*.ts",
     "package": "ncc build src/index.ts --license licenses.txt",
     "test": "jest"
   },

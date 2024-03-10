@@ -1,0 +1,6 @@
+/* multine
+ * block comment
+ */
+{
+  "VAR3": "file_value3" // inline comment
+}

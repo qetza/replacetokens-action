@@ -10,6 +10,7 @@ import {
   Options,
   TokenPatterns
 } from '@qetza/replacetokens';
+import stripJsonComments from './strip-json-comments';
 
 export async function run(): Promise<void> {
   const _debug = console.debug;
@@ -116,7 +117,7 @@ export async function run(): Promise<void> {
     core.setOutput('tokens', result.tokens);
     core.setOutput('transforms', result.transforms);
   } catch (error) {
-    if (error instanceof Error) core.setFailed(error.message);
+    core.setFailed(error instanceof Error ? error.message : `${error}`);
   } finally {
     // restore console logs
     console.debug = _debug;
@@ -138,7 +139,7 @@ function getChoiceInput(name: string, choices: string[], options?: core.InputOpt
 
 async function parseVariables(input: string): Promise<{ [key: string]: any }> {
   input = input || '{}';
-  const variables = JSON.parse(input);
+  const variables = JSON.parse(stripJsonComments(input));
 
   let load = async (v: any) => {
     if (typeof v === 'string') {
@@ -146,11 +147,11 @@ async function parseVariables(input: string): Promise<{ [key: string]: any }> {
         case '@':
           core.debug(`loading variables from file '${v.substring(1)}'`);
 
-          return JSON.parse((await readTextFile(v.substring(1))).content || '{}');
+          return JSON.parse(stripJsonComments((await readTextFile(v.substring(1))).content || '{}'));
         case '$':
           core.debug(`loading variables from environment '${v.substring(1)}'`);
 
-          return JSON.parse(process.env[v.substring(1)] || '{}');
+          return JSON.parse(stripJsonComments(process.env[v.substring(1)] || '{}'));
         default:
           throw new Error(
             "Unsupported value for: variables\nString values starts with '@' (file path) or '$' (environment variable)"

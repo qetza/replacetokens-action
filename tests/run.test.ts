@@ -614,8 +614,8 @@ describe('run', () => {
     expect(infoSpy).not.toHaveBeenCalledWith('info');
     expect(warningSpy).toHaveBeenCalledWith('warn');
     expect(setFailedSpy).toHaveBeenCalledWith('error');
-    expect(startGroupSpy).toHaveBeenCalledWith('group');
-    expect(endGroupSpy).toHaveBeenCalled();
+    expect(startGroupSpy).not.toHaveBeenCalledWith('group');
+    expect(endGroupSpy).not.toHaveBeenCalled();
   });
 
   it('log-level: error', async () => {
@@ -651,8 +651,8 @@ describe('run', () => {
     expect(infoSpy).not.toHaveBeenCalledWith('info');
     expect(warningSpy).not.toHaveBeenCalledWith('warn');
     expect(setFailedSpy).toHaveBeenCalledWith('error');
-    expect(startGroupSpy).toHaveBeenCalledWith('group');
-    expect(endGroupSpy).toHaveBeenCalled();
+    expect(startGroupSpy).not.toHaveBeenCalledWith('group');
+    expect(endGroupSpy).not.toHaveBeenCalled();
   });
 
   it('missing-var-action', async () => {

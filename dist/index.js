@@ -47708,10 +47708,12 @@ async function run() {
             core.setFailed(args.join(' ')); // always set failure on error
         };
         console.group = function (...args) {
-            core.startGroup(args.join(' '));
+            if (logLevel < LogLevel.Warn)
+                core.startGroup(args.join(' '));
         };
         console.groupEnd = function () {
-            core.endGroup();
+            if (logLevel < LogLevel.Warn)
+                core.endGroup();
         };
         // replace tokens
         const result = await (0, replacetokens_1.replaceTokens)(sources, variables, options);

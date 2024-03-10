@@ -261,7 +261,7 @@ describe('run', () => {
     getInputSpy.mockImplementation(name => {
       switch (name) {
         case 'variables':
-          return JSON.stringify('@tests/**/*.(json|jsonc);!**/settings*');
+          return JSON.stringify('@tests/**/*.(json|jsonc|yml|yaml);!**/settings*');
         default:
           return '';
       }
@@ -279,10 +279,13 @@ describe('run', () => {
     expect(debugSpy).toHaveBeenCalledWith(
       `loading variables from file '${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}'`
     );
+    expect(debugSpy).toHaveBeenCalledWith(
+      `loading variables from file '${path.join(__dirname, 'data/vars.yml').replace(/\\/g, '/')}'`
+    );
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      { VAR3: 'file_value3', VAR4: 'file_value4' },
+      { VAR3: 'file_value3', VAR4: 'file_value4', VAR5: 'file_value5' },
       expect.anything()
     );
   });
@@ -325,7 +328,8 @@ describe('run', () => {
           return JSON.stringify([
             { VAR1: 'value1', VAR2: 'value2', VAR3: 'value3' },
             '$ENV_VARS',
-            `@${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}`
+            `@${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}`,
+            '@**/vars.(yml|yaml)'
           ]);
         default:
           return '';
@@ -341,11 +345,14 @@ describe('run', () => {
     expect(debugSpy).toHaveBeenCalledWith(
       `loading variables from file '${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}'`
     );
+    expect(debugSpy).toHaveBeenCalledWith(
+      `loading variables from file '${path.join(__dirname, 'data/vars.yml').replace(/\\/g, '/')}'`
+    );
     expect(debugSpy).toHaveBeenCalledWith("loading variables from environment 'ENV_VARS'");
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      { VAR1: 'value1', VAR2: 'env_value2', VAR3: 'file_value3' },
+      { VAR1: 'value1', VAR2: 'env_value2', VAR3: 'file_value3', VAR5: 'file_value5' },
       expect.anything()
     );
   });

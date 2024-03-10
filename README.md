@@ -4,7 +4,7 @@
 This GitHub Action replaces tokens in text files with variables and/or secrets.
 
 ## What's new
-Please refer to the [release page](https://github.com/qetza/replacetokens-action/releases) for the latest release notes.
+Please refer to the [release page](https://github.com/qetza/replacetokens-action/releases/latest) for the latest release notes.
 
 ## Usage
 ### Inputs
@@ -31,7 +31,7 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     # The object can be:
     #   - an object: properties will be parsed as key/value pairs
     #   - a string starting with '@': value is parsed as multiple glob patterns separated 
-    #     by a semi-colon ';' using fast-glob syntax to JSON files
+    #     by a semi-colon ';' using fast-glob syntax to JSON or YAML files
     #   - a string starting with '$': value is parsed as an environment variable name 
     #     containing JSON encoded key/value pairs
     #   - an array: each item must be an object or a string and will be parsed as 
@@ -236,7 +236,8 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
         ${{ toJSON(vars) }},                                           # variables
         ${{ toJSON(secrets) }},                                        # secrets
         ${{ toJSON(format('@{0}/settings.json', github.workspace)) }}, # read from file
-        "@**/vars.(json|jsonc);!**/local/*"                            # read from files
+        "@**/vars.(json|jsonc);!**/local/*"                            # read from JSON files
+        "@**/settings.(yml|yaml);!**/local/*"                          # read from YAML files
         "$ENV_VARS",                                                   # read from env
         { "VAR2": "${{ github.event.inputs.var2 }}" }                  # inline values
       ]

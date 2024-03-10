@@ -11,6 +11,8 @@ import {
   TokenPatterns
 } from '@qetza/replacetokens';
 import * as fg from 'fast-glob';
+import * as path from 'path';
+import * as yaml from 'js-yaml';
 import stripJsonComments from './strip-json-comments';
 
 export async function run(): Promise<void> {
@@ -195,7 +197,15 @@ async function loadVariablesFromFile(name: string, root: string): Promise<{ [key
   for (const file of files) {
     core.debug(`loading variables from file '${file}'`);
 
-    vars.push(JSON.parse(stripJsonComments((await readTextFile(file)).content || '{}')));
+    const content = (await readTextFile(file)).content;
+
+    if (['.yml', '.yaml'].includes(path.extname(file).toLowerCase())) {
+      yaml.loadAll(content, (v: any) => {
+        vars.push(v);
+      });
+    } else {
+      vars.push(JSON.parse(stripJsonComments(content || '{}')));
+    }
   }
 
   return merge(...vars);

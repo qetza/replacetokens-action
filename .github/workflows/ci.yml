@@ -31,7 +31,7 @@ jobs:
         run: npm ci
 
       - name: Check code format
-        run: npm run format-check
+        run: npm run format:check
 
       - name: Build
         run: npm run build
@@ -63,7 +63,7 @@ jobs:
               ${{ toJSON(vars) }},
               ${{ toJSON(secrets) }},
               { "VAR2": "#{inline}#value2", "inline": "inline_" },
-              ${{ toJSON(format('@{0}/tests/data/vars.json', github.workspace)) }},
+              ${{ toJSON(format('@{0}/tests/data/vars.jsonc', github.workspace)) }},
               "$ENV_VARS"
             ]
           root: ${{ github.workspace }}/tests

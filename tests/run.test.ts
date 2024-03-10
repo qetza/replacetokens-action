@@ -13,6 +13,7 @@ let setFailedSpy: jest.SpiedFunction<typeof core.setFailed>;
 let setOutputSpy: jest.SpiedFunction<typeof core.setOutput>;
 let startGroupSpy: jest.SpiedFunction<typeof core.startGroup>;
 let warningSpy: jest.SpiedFunction<typeof core.warning>;
+let replaceTokenSpy: jest.SpiedFunction<typeof rt.replaceTokens>;
 
 describe('run', () => {
   beforeEach(() => {
@@ -28,6 +29,14 @@ describe('run', () => {
     setOutputSpy = jest.spyOn(core, 'setOutput').mockImplementation();
     startGroupSpy = jest.spyOn(core, 'startGroup').mockImplementation();
     warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+    replaceTokenSpy = jest
+      .spyOn(rt, 'replaceTokens')
+      .mockImplementation(
+        (sources, variables, options) =>
+          new Promise<rt.Counter>((resolve, reject) =>
+            resolve({ defaults: 1, files: 2, replaced: 3, tokens: 4, transforms: 5 })
+          )
+      );
   });
 
   afterEach(() => {
@@ -160,19 +169,13 @@ describe('run', () => {
           return [];
       }
     });
-    const replaceTokenSpy = jest
-      .spyOn(rt, 'replaceTokens')
-      .mockImplementation(
-        (sources, variables, options) =>
-          new Promise<rt.Counter>((resolve, reject) =>
-            resolve({ defaults: 1, files: 2, replaced: 3, tokens: 4, transforms: 5 })
-          )
-      );
 
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       sources,
       {},
@@ -223,12 +226,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), vars, expect.anything());
   });
 
@@ -244,12 +247,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), vars, expect.anything());
   });
 
@@ -258,25 +261,28 @@ describe('run', () => {
     getInputSpy.mockImplementation(name => {
       switch (name) {
         case 'variables':
-          return JSON.stringify(`@${path.join(__dirname, 'data/vars.json')}`);
+          return JSON.stringify(`@${path.join(__dirname, 'data/vars.jsonc')}`);
         default:
           return '';
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), { VAR3: 'file_value3' }, expect.anything());
   });
 
   it('variables: env', async () => {
     // arrange
-    const vars = { VAR1: 'value1' };
-    jest.replaceProperty(process, 'env', { ENV_VARS: JSON.stringify(vars) });
+    jest.replaceProperty(process, 'env', {
+      ENV_VARS: `{
+      "VAR1": "value1" // inline comment
+    }`
+    });
 
     getInputSpy.mockImplementation(name => {
       switch (name) {
@@ -287,13 +293,13 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
-    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), vars, expect.anything());
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
+    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), { VAR1: 'value1' }, expect.anything());
   });
 
   it('variables: merge', async () => {
@@ -306,22 +312,52 @@ describe('run', () => {
           return JSON.stringify([
             { VAR1: 'value1', VAR2: 'value2', VAR3: 'value3' },
             '$ENV_VARS',
-            `@${path.join(__dirname, 'data/vars.json')}`
+            `@${path.join(__dirname, 'data/vars.jsonc')}`
           ]);
         default:
           return '';
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
+    // act
+    await run();
+
+    // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
+    expect(replaceTokenSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      { VAR1: 'value1', VAR2: 'env_value2', VAR3: 'file_value3' },
+      expect.anything()
+    );
+  });
+
+  it('variables: comments', async () => {
+    // arrange
+    getInputSpy.mockImplementation(name => {
+      switch (name) {
+        case 'variables':
+          return `{
+            "VAR1": "value1", // inline comment
+            "VAR2": "value2" /* block comment */
+            /* multiline comment
+            "VAR3": "value3"
+            */
+          }`;
+        default:
+          return '';
+      }
+    });
 
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      { VAR1: 'value1', VAR2: 'env_value2', VAR3: 'file_value3' },
+      { VAR1: 'value1', VAR2: 'value2' },
       expect.anything()
     );
   });
@@ -337,12 +373,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -361,12 +397,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -385,12 +421,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -409,12 +445,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -433,12 +469,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -457,7 +493,7 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation((sources, variables, options) => {
+    replaceTokenSpy.mockImplementation((sources, variables, options) => {
       return new Promise((resolve, reject) => {
         console.debug('debug');
         console.info('info');
@@ -494,7 +530,7 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation((sources, variables, options) => {
+    replaceTokenSpy.mockImplementation((sources, variables, options) => {
       return new Promise((resolve, reject) => {
         console.debug('debug');
         console.info('info');
@@ -531,7 +567,7 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation((sources, variables, options) => {
+    replaceTokenSpy.mockImplementation((sources, variables, options) => {
       return new Promise((resolve, reject) => {
         console.debug('debug');
         console.info('info');
@@ -568,7 +604,7 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation((sources, variables, options) => {
+    replaceTokenSpy.mockImplementation((sources, variables, options) => {
       return new Promise((resolve, reject) => {
         console.debug('debug');
         console.info('info');
@@ -605,12 +641,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -629,12 +665,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -653,12 +689,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -677,12 +713,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -701,12 +737,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -725,12 +761,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -749,12 +785,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -773,12 +809,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -797,12 +833,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -821,12 +857,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -845,12 +881,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -869,12 +905,12 @@ describe('run', () => {
       }
     });
 
-    const replaceTokenSpy = jest.spyOn(rt, 'replaceTokens').mockImplementation();
-
     // act
     await run();
 
     // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),

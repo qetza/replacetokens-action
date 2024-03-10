@@ -261,7 +261,7 @@ describe('run', () => {
     getInputSpy.mockImplementation(name => {
       switch (name) {
         case 'variables':
-          return JSON.stringify(`@${path.join(__dirname, 'data/vars.jsonc')}`);
+          return JSON.stringify('@tests/**/*.(json|jsonc);!**/settings*');
         default:
           return '';
       }
@@ -273,7 +273,18 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), { VAR3: 'file_value3' }, expect.anything());
+    expect(debugSpy).toHaveBeenCalledWith(
+      `loading variables from file '${path.join(__dirname, 'data/vars.json').replace(/\\/g, '/')}'`
+    );
+    expect(debugSpy).toHaveBeenCalledWith(
+      `loading variables from file '${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}'`
+    );
+
+    expect(replaceTokenSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      { VAR3: 'file_value3', VAR4: 'file_value4' },
+      expect.anything()
+    );
   });
 
   it('variables: env', async () => {
@@ -299,6 +310,8 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
+    expect(debugSpy).toHaveBeenCalledWith("loading variables from environment 'ENV_VARS'");
+
     expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), { VAR1: 'value1' }, expect.anything());
   });
 
@@ -312,7 +325,7 @@ describe('run', () => {
           return JSON.stringify([
             { VAR1: 'value1', VAR2: 'value2', VAR3: 'value3' },
             '$ENV_VARS',
-            `@${path.join(__dirname, 'data/vars.jsonc')}`
+            `@${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}`
           ]);
         default:
           return '';
@@ -324,6 +337,11 @@ describe('run', () => {
 
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
+
+    expect(debugSpy).toHaveBeenCalledWith(
+      `loading variables from file '${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}'`
+    );
+    expect(debugSpy).toHaveBeenCalledWith("loading variables from environment 'ENV_VARS'");
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),

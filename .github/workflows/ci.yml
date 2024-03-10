@@ -64,7 +64,7 @@ jobs:
               ${{ toJSON(secrets) }},
               { "VAR2": "#{inline}#value2", "inline": "inline_" },
               ${{ toJSON(format('@{0}/tests/data/vars.jsonc', github.workspace)) }},
-              "@**/*.json;!**/settings*",
+              "@**/*.(json|yml);!**/settings*",
               "$ENV_VARS"
             ]
           root: ${{ github.workspace }}/tests

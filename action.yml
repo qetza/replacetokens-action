@@ -27,7 +27,7 @@ inputs:
       The object can be:
         - an object: properties will be parsed as key/value pairs
         - a string starting with '@': value is parsed as multiple glob patterns separated 
-          by a semi-colon ';' using fast-glob syntax to JSON files
+          by a semi-colon ';' using fast-glob syntax to JSON or YAML files
         - a string starting with '$': value is parsed as an environment variable name 
           containing JSON encoded key/value pairs
         - an array: each item must be an object or a string and will be parsed as specified 

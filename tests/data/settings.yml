@@ -3,4 +3,5 @@ vars:
   - #{VAR2}#
   - #{upper(VAR3)}#
   - #{VAR4}#
+  - #{base64(VAR5)}#
   - #{SECRET2}#

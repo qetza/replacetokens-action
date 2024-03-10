@@ -97,10 +97,10 @@ export async function run(): Promise<void> {
       core.setFailed(args.join(' ')); // always set failure on error
     };
     console.group = function (...args) {
-      core.startGroup(args.join(' '));
+      if (logLevel < LogLevel.Warn) core.startGroup(args.join(' '));
     };
     console.groupEnd = function () {
-      core.endGroup();
+      if (logLevel < LogLevel.Warn) core.endGroup();
     };
 
     // replace tokens

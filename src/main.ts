@@ -14,6 +14,8 @@ import * as fg from 'fast-glob';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import stripJsonComments from './strip-json-comments';
+import { TelemetryClient } from './telemetry';
+import { SpanStatusCode } from '@opentelemetry/api';
 
 export async function run(): Promise<void> {
   const _debug = console.debug;
@@ -22,6 +24,22 @@ export async function run(): Promise<void> {
   const _error = console.error;
   const _group = console.group;
   const _groupEnd = console.groupEnd;
+
+  const telemetry = new TelemetryClient(
+    process.env['GITHUB_REPOSITORY'],
+    process.env['GITHUB_WORKFLOW'],
+    process.env['GITHUB_SERVER_URL'] === 'https://github.com' ? 'cloud' : 'server',
+    process.env['RUNNER_OS']
+  );
+
+  if (
+    !core.getBooleanInput('no-telemetry') &&
+    !['true', '1'].includes(process.env['REPLACETOKENS_TELEMETRY_OPTOUT'] || '')
+  ) {
+    telemetry.useApplicationInsightsExporter({ log: core.debug });
+  }
+
+  const telemetryEvent = telemetry.startSpan('run');
 
   try {
     // read and validate inputs
@@ -80,8 +98,37 @@ export async function run(): Promise<void> {
       options.root || process.cwd()
     );
 
+    const ifNoFilesFound = getChoiceInput('if-no-files-found', ['ignore', 'warn', 'error']) || 'ignore';
+    const logLevelStr = getChoiceInput('log-level', ['debug', 'info', 'warn', 'error']) || 'info';
+
+    // set telemetry attributes
+    telemetryEvent.setAttributes({
+      sources: sources.length,
+      'add-bom': options.addBOM,
+      'chars-to-escape': options.escape!.chars,
+      encoding: options.encoding,
+      escape: options.escape!.type,
+      'escape-char': options.escape!.escapeChar,
+      'if-no-files-found': ifNoFilesFound,
+      'log-level': logLevelStr,
+      'missing-var-action': options.missing!.action,
+      'missing-var-default': options.missing!.default,
+      'missing-var-log': options.missing!.log,
+      recusrive: options.recursive,
+      separator: options.separator,
+      'token-pattern': options.token!.pattern,
+      'token-prefix': options.token!.prefix,
+      'token-suffix': options.token!.suffix,
+      transforms: options.transforms!.enabled,
+      'transforms-prefix': options.transforms!.prefix,
+      'transforms-suffix': options.transforms!.suffix,
+      'variable-files': variableFilesCount,
+      'variable-envs': variablesEnvCount,
+      'inline-variables': inlineVariablesCount
+    });
+
     // override console logs
-    const logLevel = parseLogLevel(getChoiceInput('log-level', ['debug', 'info', 'warn', 'error']));
+    const logLevel = parseLogLevel(logLevelStr);
     console.debug = function (...args) {
       core.debug(args.join(' ')); // always debug to core
 
@@ -107,7 +154,7 @@ export async function run(): Promise<void> {
     const result = await replaceTokens(sources, variables, options);
 
     if (result.files === 0) {
-      switch (getChoiceInput('if-no-files-found', ['ignore', 'warn', 'error']) || 'ignore') {
+      switch (ifNoFilesFound) {
         case 'warn':
           core.warning('No files were found with provided sources.');
         case 'error':
@@ -123,9 +170,23 @@ export async function run(): Promise<void> {
     core.setOutput('replaced', result.replaced);
     core.setOutput('tokens', result.tokens);
     core.setOutput('transforms', result.transforms);
+
+    telemetryEvent.setAttributes({
+      'output-defaults': result.defaults,
+      'output-files': result.files,
+      'output-replaced': result.replaced,
+      'output-tokens': result.tokens,
+      'output-transforms': result.transforms
+    });
+
+    telemetryEvent.setStatus({ code: SpanStatusCode.OK });
   } catch (error) {
+    telemetryEvent.setStatus({ code: SpanStatusCode.ERROR });
+
     core.setFailed(error instanceof Error ? error.message : `${error}`);
   } finally {
+    telemetryEvent.end();
+
     // restore console logs
     console.debug = _debug;
     console.info = _info;
@@ -144,6 +205,8 @@ function getChoiceInput(name: string, choices: string[], options?: core.InputOpt
   throw new TypeError(`Unsupported value for input: ${name}\nSupport input list: '${choices.join(' | ')}'`);
 }
 
+var variablesEnvCount = 0;
+var inlineVariablesCount = 0;
 async function parseVariables(input: string, root: string): Promise<{ [key: string]: any }> {
   input = input || '{}';
   const variables = JSON.parse(stripJsonComments(input));
@@ -157,6 +220,8 @@ async function parseVariables(input: string, root: string): Promise<{ [key: stri
         case '$': // single string referencing environment variable
           core.debug(`loading variables from environment '${v.substring(1)}'`);
 
+          ++variablesEnvCount;
+
           return JSON.parse(stripJsonComments(process.env[v.substring(1)] || '{}'));
 
         default: // unsupported
@@ -165,6 +230,8 @@ async function parseVariables(input: string, root: string): Promise<{ [key: stri
           );
       }
     }
+
+    inlineVariablesCount += Object.keys(v).length;
 
     return v;
   };
@@ -182,6 +249,7 @@ async function parseVariables(input: string, root: string): Promise<{ [key: stri
   return await load(variables);
 }
 
+var variableFilesCount = 0;
 async function loadVariablesFromFile(name: string, root: string): Promise<{ [key: string]: any }> {
   var files = await fg.glob(
     name.split(';').map(v => v.trim()),
@@ -206,6 +274,8 @@ async function loadVariablesFromFile(name: string, root: string): Promise<{ [key
     } else {
       vars.push(JSON.parse(stripJsonComments(content || '{}')));
     }
+
+    ++variableFilesCount;
   }
 
   return merge(...vars);

@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import * as path from 'path';
 import * as rt from '@qetza/replacetokens';
+import axios from 'axios';
 import { run } from '../src/main';
 
 let debugSpy: jest.SpiedFunction<typeof core.debug>;
@@ -14,10 +15,16 @@ let setOutputSpy: jest.SpiedFunction<typeof core.setOutput>;
 let startGroupSpy: jest.SpiedFunction<typeof core.startGroup>;
 let warningSpy: jest.SpiedFunction<typeof core.warning>;
 let replaceTokenSpy: jest.SpiedFunction<typeof rt.replaceTokens>;
+let postSpy: jest.SpiedFunction<typeof axios.post>;
 
 describe('run', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    process.env['GITHUB_REPOSITORY'] = 'qetza/local';
+    process.env['GITHUB_WORKFLOW'] = 'tests';
+    process.env['GITHUB_SERVER_URL'] = 'https://localhost';
+    process.env['RUNNER_OS'] = 'Windows';
 
     debugSpy = jest.spyOn(core, 'debug').mockImplementation();
     endGroupSpy = jest.spyOn(core, 'endGroup').mockImplementation();
@@ -31,16 +38,18 @@ describe('run', () => {
     warningSpy = jest.spyOn(core, 'warning').mockImplementation();
     replaceTokenSpy = jest
       .spyOn(rt, 'replaceTokens')
-      .mockImplementation(
-        (sources, variables, options) =>
-          new Promise<rt.Counter>((resolve, reject) =>
-            resolve({ defaults: 1, files: 2, replaced: 3, tokens: 4, transforms: 5 })
-          )
-      );
+      .mockResolvedValue({ defaults: 1, files: 2, replaced: 3, tokens: 4, transforms: 5 });
+    postSpy = jest.spyOn(axios, 'post').mockResolvedValue({});
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
+
+    delete process.env['GITHUB_REPOSITORY'];
+    delete process.env['GITHUB_WORKFLOW'];
+    delete process.env['GITHUB_SERVER_URL'];
+    delete process.env['RUNNER_OS'];
+    delete process.env['REPLACETOKENS_TELEMETRY_OPTOUT'];
   });
 
   it('validate: sources', async () => {
@@ -212,6 +221,54 @@ describe('run', () => {
     expect(setOutputSpy).toHaveBeenCalledWith('replaced', 3);
     expect(setOutputSpy).toHaveBeenCalledWith('tokens', 4);
     expect(setOutputSpy).toHaveBeenCalledWith('transforms', 5);
+  });
+
+  it('telemetry: success', async () => {
+    // arrange
+    const sources = ['**/*.json', '**/*.xml', '**/*.yml'];
+    getMultilineInputSpy.mockImplementation(name => {
+      switch (name) {
+        case 'sources':
+          return sources;
+        default:
+          return [];
+      }
+    });
+
+    // act
+    await run();
+
+    // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
+    expect(postSpy).toHaveBeenCalled();
+
+    expect(debugSpy).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /\[\{"name":"\*+","time":"[^"]+","iKey":"\*+","tags":\{"ai\.application\.ver":"1\.\d+\.\d+","ai\.cloud\.role":"server","ai\.internal\.sdkVersion":"replacetokens:2\.0\.0","ai\.operation\.id":"[^"]+","ai\.operation\.name":"replacetokens-action","ai\.user\.accountId":"c054bf9f6127dc352a184a29403ac9114f6c2a8e27cb467197cdfc1c3df119e4","ai\.user\.authUserId":"59830ebc3a4184110566bf1a290d08473dfdcbd492ce498b14cd1a5e2fa2e441"},"data":\{"baseType":"EventData","baseData":\{"ver":"2","name":"tokens\.replaced","properties":\{"os":"Windows","sources":3,"add-bom":false,"chars-to-escape":"","encoding":"auto","escape":"auto","escape-char":"","if-no-files-found":"ignore","log-level":"info","missing-var-action":"none","missing-var-default":"","missing-var-log":"warn","recusrive":false,"separator":"\.","token-pattern":"default","token-prefix":"","token-suffix":"","transforms":false,"transforms-prefix":"\(","transforms-suffix":"\)","variable-files":0,"variable-envs":0,"inline-variables":0,"output-defaults":1,"output-files":2,"output-replaced":3,"output-tokens":4,"output-transforms":5,"result":"success","duration":\d+(?:\.\d+)?}}}}]/
+      )
+    );
+  });
+
+  it('telemetry: failure', async () => {
+    // arrange
+    getMultilineInputSpy.mockImplementation(name => {
+      throw new Error(`Input required and not supplied: ${name}`);
+    });
+
+    // act
+    await run();
+
+    // assert
+    expect(setFailedSpy).toHaveBeenCalled();
+
+    expect(postSpy).toHaveBeenCalled();
+
+    expect(debugSpy).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /\[\{"name":"\*+","time":"[^"]+","iKey":"\*+","tags":\{"ai\.application\.ver":"1\.\d+\.\d+","ai\.cloud\.role":"server","ai\.internal\.sdkVersion":"replacetokens:2\.0\.0","ai\.operation\.id":"[^"]+","ai\.operation\.name":"replacetokens-action","ai\.user\.accountId":"c054bf9f6127dc352a184a29403ac9114f6c2a8e27cb467197cdfc1c3df119e4","ai\.user\.authUserId":"59830ebc3a4184110566bf1a290d08473dfdcbd492ce498b14cd1a5e2fa2e441"},"data":\{"baseType":"EventData","baseData":\{"ver":"2","name":"tokens\.replaced","properties":\{"os":"Windows","result":"failed","duration":\d+(?:\.\d+)?}}}}]/
+      )
+    );
   });
 
   it('variables: object', async () => {
@@ -725,6 +782,62 @@ describe('run', () => {
       expect.anything(),
       expect.objectContaining({ missing: expect.objectContaining({ log: 'error' }) })
     );
+  });
+
+  it('no-telemetry: input', async () => {
+    // arrange
+    getBooleanInputSpy.mockImplementation(name => {
+      switch (name) {
+        case 'no-telemetry':
+          return true;
+        default:
+          return false;
+      }
+    });
+
+    // act
+    await run();
+
+    // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
+    expect(postSpy).not.toHaveBeenCalled();
+
+    expect(debugSpy).not.toHaveBeenCalledWith(expect.stringContaining('telemetry: '));
+  });
+
+  it('no-telemetry: REPLACETOKENS_TELEMETRY_OPTOUT=1', async () => {
+    // arrange
+    getBooleanInputSpy.mockImplementation(name => false);
+
+    process.env['REPLACETOKENS_TELEMETRY_OPTOUT'] = '1';
+
+    // act
+    await run();
+
+    // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
+    expect(postSpy).not.toHaveBeenCalled();
+
+    expect(debugSpy).not.toHaveBeenCalledWith(expect.stringContaining('telemetry: '));
+  });
+
+  it('no-telemetry: REPLACETOKENS_TELEMETRY_OPTOUT=true', async () => {
+    // arrange
+    getBooleanInputSpy.mockImplementation(name => false);
+
+    process.env['REPLACETOKENS_TELEMETRY_OPTOUT'] = 'true';
+
+    // act
+    await run();
+
+    // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
+    expect(postSpy).not.toHaveBeenCalled();
+
+    expect(debugSpy).not.toHaveBeenCalledWith(expect.stringContaining('telemetry: '));
   });
 
   it('recursive', async () => {

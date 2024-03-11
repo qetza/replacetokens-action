@@ -6,6 +6,7 @@
 - Add support for YAML variable files (`.yml` or `.yaml`)
 - Fix log level (`info`) for groups
 - Add anonymous telemetry usage
+- Upgrade package `@qetza/replacetokens` to `1.2.0`
 
 ## v1.0.0
 - Initial Release of the ReplaceTokens action

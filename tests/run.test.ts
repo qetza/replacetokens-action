@@ -384,6 +384,7 @@ describe('run', () => {
         case 'variables':
           return JSON.stringify([
             { VAR1: 'value1', VAR2: 'value2', VAR3: 'value3' },
+            [1, true, { VAR6: 'value6' }],
             '$ENV_VARS',
             `@${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}`,
             '@**/vars.(yml|yaml)'
@@ -409,7 +410,15 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      { VAR1: 'value1', VAR2: 'env_value2', VAR3: 'file_value3', VAR5: 'file_value5' },
+      {
+        VAR1: 'value1',
+        VAR2: 'env_value2',
+        VAR3: 'file_value3',
+        VAR5: 'file_value5',
+        '0': '1',
+        '1': 'true',
+        '2.VAR6': 'value6'
+      },
       expect.anything()
     );
   });

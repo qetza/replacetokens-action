@@ -1,7 +1,7 @@
 import * as core from '@actions/core';
 import {
   readTextFile,
-  merge,
+  flattenAndMerge,
   replaceTokens,
   Defaults,
   Encodings,
@@ -95,7 +95,8 @@ export async function run(): Promise<void> {
     const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
     const variables = await parseVariables(
       core.getInput('variables', { required: true, trimWhitespace: true }),
-      options.root || process.cwd()
+      options.root || process.cwd(),
+      options.separator!
     );
 
     const ifNoFilesFound = getChoiceInput('if-no-files-found', ['ignore', 'warn', 'error']) || 'ignore';
@@ -207,7 +208,7 @@ function getChoiceInput(name: string, choices: string[], options?: core.InputOpt
 
 var variablesEnvCount = 0;
 var inlineVariablesCount = 0;
-async function parseVariables(input: string, root: string): Promise<{ [key: string]: any }> {
+async function parseVariables(input: string, root: string, separator: string): Promise<{ [key: string]: any }> {
   input = input || '{}';
   const variables = JSON.parse(stripJsonComments(input));
 
@@ -215,7 +216,7 @@ async function parseVariables(input: string, root: string): Promise<{ [key: stri
     if (typeof v === 'string') {
       switch (v[0]) {
         case '@': // single string referencing a file
-          return await loadVariablesFromFile(v.substring(1), root);
+          return await loadVariablesFromFile(v.substring(1), root, separator);
 
         case '$': // single string referencing environment variable
           core.debug(`loading variables from environment '${v.substring(1)}'`);
@@ -243,14 +244,14 @@ async function parseVariables(input: string, root: string): Promise<{ [key: stri
       vars.push(await load(v));
     }
 
-    return merge(...vars);
+    return flattenAndMerge(separator, ...vars);
   }
 
   return await load(variables);
 }
 
 var variableFilesCount = 0;
-async function loadVariablesFromFile(name: string, root: string): Promise<{ [key: string]: any }> {
+async function loadVariablesFromFile(name: string, root: string, separator: string): Promise<{ [key: string]: any }> {
   var files = await fg.glob(
     name.split(';').map(v => v.trim()),
     {
@@ -278,7 +279,7 @@ async function loadVariablesFromFile(name: string, root: string): Promise<{ [key
     ++variableFilesCount;
   }
 
-  return merge(...vars);
+  return flattenAndMerge(separator, ...vars);
 }
 
 enum LogLevel {

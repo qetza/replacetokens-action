@@ -275,6 +275,7 @@ The following **anonymous** data is send:
 - the **hash** of the owner and repository name (GITHUB_REPOSITORY)
 - the **hash** of the workflow name (GITHUB_WORKFLOW)
 - the hosting (`server` or `cloud`)
+- the runner operating system (RUNNER_OS)
 - the inputs values for
   - _add-bom_
   - _chars-to-escape_

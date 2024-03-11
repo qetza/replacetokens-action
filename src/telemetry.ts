@@ -60,7 +60,7 @@ class ApplicationInsightsExporter implements SpanExporter {
         'ai.operation.id': span.spanContext().traceId,
         'ai.operation.name': application,
         'ai.user.accountId': span.attributes['account'],
-        'ai.user.authUserId': span.attributes['pipeline']
+        'ai.user.authUserId': span.attributes['workflow']
       },
       data: {
         baseType: 'EventData',
@@ -71,7 +71,7 @@ class ApplicationInsightsExporter implements SpanExporter {
             ...span.attributes,
             host: undefined,
             account: undefined,
-            pipeline: undefined,
+            workflow: undefined,
             result: (() => {
               switch (span.status.code) {
                 case SpanStatusCode.ERROR:
@@ -107,10 +107,11 @@ export class TelemetryClient {
   private readonly _account: string;
   private readonly _workflow: string;
   private readonly _host: string;
+  private readonly _os: string;
 
   private _isApplicationInsightsExporterRegistered = false;
 
-  constructor(account?: string, workflow?: string, host?: string) {
+  constructor(account?: string, workflow?: string, host?: string, os?: string) {
     this._provider = new BasicTracerProvider({ forceFlushTimeoutMillis: timeout });
     this._tracer = this._provider.getTracer(application, version);
     this._account = crypto
@@ -121,12 +122,13 @@ export class TelemetryClient {
       .createHash('sha256')
       .update(workflow || '')
       .digest('hex');
-    this._host = host || 'cloud';
+    this._host = host || '';
+    this._os = os || '';
   }
 
   startSpan(name: string): Span {
     return this._tracer.startSpan(name, {
-      attributes: { account: this._account, pipeline: this._workflow, host: this._host }
+      attributes: { account: this._account, workflow: this._workflow, host: this._host, os: this._os }
     });
   }
 

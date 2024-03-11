@@ -28,7 +28,8 @@ export async function run(): Promise<void> {
   const telemetry = new TelemetryClient(
     process.env['GITHUB_REPOSITORY'],
     process.env['GITHUB_WORKFLOW'],
-    process.env['GITHUB_SERVER_URL'] === 'https://github.com' ? 'cloud' : 'server'
+    process.env['GITHUB_SERVER_URL'] === 'https://github.com' ? 'cloud' : 'server',
+    process.env['RUNNER_OS']
   );
 
   if (

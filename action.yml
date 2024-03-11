@@ -103,6 +103,12 @@ inputs:
         - warn
         - error
     default: 'warn'
+  no-telemetry:
+    description: >
+      Opt out of the anonymous telemetry feature.
+      You can also set the 'REPLACETOKENS_TELEMETRY_OPTOUT' environment variable to '1' 
+      or 'true'.
+    default: 'false'
   recursive:
     description: 'Enable token replacements in values recusively.'
     default: 'false'

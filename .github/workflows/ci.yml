@@ -50,6 +50,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Update telemetry application (linux/macos)
+        if: runner.os != 'Windows'
+        run: |
+          sed -i 's/const application\s*=\s*'replacetokens-action'/const application = 'replacetokens-action-dev'/ $GITHUB_WORKSPACE/dist/index.js
+
+      - name: Update telemetry application (windows)
+        if: runner.os == 'Windows'
+        run: |
+          $p = "$env:GITHUB_WORKSPACE\dist\index.js"
+          (get-content $p -raw) -replace "const application\s*=\s*'replacetokens-action'", "const application = 'replacetokens-action-dev'" | set-content $p
+
       - name: Run local action
         uses: ./
         id: replace-tokens

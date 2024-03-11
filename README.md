@@ -132,6 +132,13 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     # Optional. Default: warn
     missing-var-log: ''
 
+    # Opt out of the anonymous telemetry feature.
+    # You can also set the 'REPLACETOKENS_TELEMETRY_OPTOUT' environment variable to '1' 
+    # or 'true'.
+    #
+    # Optional. Default: false
+    no-telemetry: ''
+
     # Enable token replacements in values recusively.
     #
     # Example: '#{message}#' with variables '{"message":"hello #{name}#!","name":"world"}' 
@@ -260,3 +267,39 @@ steps:
     echo "tokens    : ${{ steps.replace-tokens.outputs.tokens }}"
     echo "transforms: ${{ steps.replace-tokens.outputs.transforms }}"
 ```
+
+## Data/Telemetry
+The ReplaceTokens GitHub Action collects **anonymous** usage data and sends them by default to its author to help improve the product. If you don't wish to send usage data, you can change your telemetry settings through the _no-telemetry_ input or by setting the `REPLACETOKENS_TELEMETRY_OPTOUT` environment variable to `1` or `true`.
+
+The following **anonymous** data is send:
+- the **hash** of the owner and repository name (GITHUB_REPOSITORY)
+- the **hash** of the workflow name (GITHUB_WORKFLOW)
+- the hosting (`server` or `cloud`)
+- the inputs values for
+  - _add-bom_
+  - _chars-to-escape_
+  - _encoding_
+  - _escape_
+  - _escape-char_
+  - _if-no-files-found_
+  - _log-level_
+  - _missing-varvaction_
+  - _missing-var-default_
+  - _missing-varvlog_
+  - _recursive_
+  - _separator_
+  - _token-pattern_
+  - _token-prefix_
+  - _token-suffix_
+  - _transforms_
+  - _transforms-prefix_
+  - _transforms-suffix_
+- the **number of** _sources_ entries
+- the **number of** _variables_ entries referencing file
+- the **number of** _variables_ entries referencing environment variables
+- the **number of** _variables_ inline entries
+- the task result (`success` or `failed`)
+- the task execution duration
+- the outputs (defaults, files, replaced, tokens and transforms)
+
+You can see the JSON serialized telemetry data sent in debug logs.

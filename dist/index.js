@@ -63251,7 +63251,7 @@ async function run() {
     const _error = console.error;
     const _group = console.group;
     const _groupEnd = console.groupEnd;
-    const telemetry = new telemetry_1.TelemetryClient(process.env['GITHUB_REPOSITORY'], process.env['GITHUB_WORKFLOW'], process.env['GITHUB_SERVER_URL'] === 'https://github.com' ? 'cloud' : 'server');
+    const telemetry = new telemetry_1.TelemetryClient(process.env['GITHUB_REPOSITORY'], process.env['GITHUB_WORKFLOW'], process.env['GITHUB_SERVER_URL'] === 'https://github.com' ? 'cloud' : 'server', process.env['RUNNER_OS']);
     if (!core.getBooleanInput('no-telemetry') &&
         !['true', '1'].includes(process.env['REPLACETOKENS_TELEMETRY_OPTOUT'] || '')) {
         telemetry.useApplicationInsightsExporter({ log: core.debug });
@@ -63684,7 +63684,7 @@ class ApplicationInsightsExporter {
                 'ai.operation.id': span.spanContext().traceId,
                 'ai.operation.name': application,
                 'ai.user.accountId': span.attributes['account'],
-                'ai.user.authUserId': span.attributes['pipeline']
+                'ai.user.authUserId': span.attributes['workflow']
             },
             data: {
                 baseType: 'EventData',
@@ -63695,7 +63695,7 @@ class ApplicationInsightsExporter {
                         ...span.attributes,
                         host: undefined,
                         account: undefined,
-                        pipeline: undefined,
+                        workflow: undefined,
                         result: (() => {
                             switch (span.status.code) {
                                 case api_1.SpanStatusCode.ERROR:
@@ -63729,8 +63729,9 @@ class TelemetryClient {
     _account;
     _workflow;
     _host;
+    _os;
     _isApplicationInsightsExporterRegistered = false;
-    constructor(account, workflow, host) {
+    constructor(account, workflow, host, os) {
         this._provider = new sdk_trace_base_1.BasicTracerProvider({ forceFlushTimeoutMillis: timeout });
         this._tracer = this._provider.getTracer(application, version);
         this._account = crypto
@@ -63741,11 +63742,12 @@ class TelemetryClient {
             .createHash('sha256')
             .update(workflow || '')
             .digest('hex');
-        this._host = host || 'cloud';
+        this._host = host || '';
+        this._os = os || '';
     }
     startSpan(name) {
         return this._tracer.startSpan(name, {
-            attributes: { account: this._account, pipeline: this._workflow, host: this._host }
+            attributes: { account: this._account, workflow: this._workflow, host: this._host, os: this._os }
         });
     }
     useApplicationInsightsExporter(options) {

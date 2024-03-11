@@ -14901,7 +14901,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 var _a, _b;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.replaceTokens = exports.readTextFile = exports.merge = exports.Counter = exports.Defaults = exports.Escapes = exports.MissingVariables = exports.TokenPatterns = exports.Encodings = void 0;
+exports.replaceTokens = exports.readTextFile = exports.flattenAndMerge = exports.Counter = exports.Defaults = exports.Escapes = exports.MissingVariables = exports.TokenPatterns = exports.Encodings = void 0;
 const fs = __importStar(__nccwpck_require__(3292));
 const iconv = __importStar(__nccwpck_require__(9032));
 const jschardet = __importStar(__nccwpck_require__(9783));
@@ -14961,29 +14961,25 @@ class Counter {
     }
 }
 exports.Counter = Counter;
-function merge(...objects) {
+function flattenAndMerge(separator, ...objects) {
     return objects.reduce((result, current) => {
-        if (Array.isArray(current))
-            return current;
-        for (const key of Object.keys(current)) {
-            if (!result[key]) {
-                // key doesn't already exists, copy current
-                result[key] =
-                    current[key] && typeof current[key] === 'object' ? JSON.parse(JSON.stringify(current[key])) : current[key];
-            }
-            else if (typeof result[key] === 'object' && typeof current[key] === 'object') {
-                // merge object values
-                result[key] = merge(result[key], current[key]);
-            }
-            else {
-                // update scalar value
-                result[key] = current[key];
-            }
-        }
-        return result;
+        return Object.assign(Object.assign({}, result), flatten(current, separator));
     }, {});
 }
-exports.merge = merge;
+exports.flattenAndMerge = flattenAndMerge;
+function flatten(object, separator, parentKey) {
+    let result = {};
+    Object.keys(object).forEach((key) => {
+        var _a;
+        const value = object[key];
+        const flattenKey = parentKey ? `${parentKey}${separator}${key}` : key;
+        if (value && typeof value === 'object')
+            result = Object.assign(Object.assign({}, result), flatten(value, separator, flattenKey));
+        else
+            result[flattenKey] = (_a = value === null || value === void 0 ? void 0 : value.toString()) !== null && _a !== void 0 ? _a : '';
+    });
+    return result;
+}
 function readTextFile(path, encoding = Encodings.Auto) {
     return __awaiter(this, void 0, void 0, function* () {
         encoding = encoding !== null && encoding !== void 0 ? encoding : Encodings.Auto;
@@ -15130,19 +15126,7 @@ function loadVariables(variables, options) {
     console.group('loading variables');
     try {
         // parse, flatten and stringify json variables
-        const data = (function flatten(obj, parentKey) {
-            let result = {};
-            Object.keys(obj).forEach((key) => {
-                var _a;
-                const value = obj[key];
-                const flattenKey = parentKey ? `${parentKey}${options.separator}${key}` : key;
-                if (value && typeof value === 'object')
-                    result = Object.assign(Object.assign({}, result), flatten(value, flattenKey));
-                else
-                    result[flattenKey] = (_a = value === null || value === void 0 ? void 0 : value.toString()) !== null && _a !== void 0 ? _a : '';
-            });
-            return result;
-        })(variables !== null && variables !== void 0 ? variables : {});
+        const data = flatten(variables !== null && variables !== void 0 ? variables : {}, options.separator);
         // log variables
         let count = 0;
         for (const key of Object.keys(data)) {
@@ -63304,7 +63288,7 @@ async function run() {
             }
         };
         const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
-        const variables = await parseVariables(core.getInput('variables', { required: true, trimWhitespace: true }), options.root || process.cwd());
+        const variables = await parseVariables(core.getInput('variables', { required: true, trimWhitespace: true }), options.root || process.cwd(), options.separator);
         const ifNoFilesFound = getChoiceInput('if-no-files-found', ['ignore', 'warn', 'error']) || 'ignore';
         const logLevelStr = getChoiceInput('log-level', ['debug', 'info', 'warn', 'error']) || 'info';
         // set telemetry attributes
@@ -63409,14 +63393,14 @@ function getChoiceInput(name, choices, options) {
 }
 var variablesEnvCount = 0;
 var inlineVariablesCount = 0;
-async function parseVariables(input, root) {
+async function parseVariables(input, root, separator) {
     input = input || '{}';
     const variables = JSON.parse((0, strip_json_comments_1.default)(input));
     let load = async (v) => {
         if (typeof v === 'string') {
             switch (v[0]) {
                 case '@': // single string referencing a file
-                    return await loadVariablesFromFile(v.substring(1), root);
+                    return await loadVariablesFromFile(v.substring(1), root, separator);
                 case '$': // single string referencing environment variable
                     core.debug(`loading variables from environment '${v.substring(1)}'`);
                     ++variablesEnvCount;
@@ -63434,12 +63418,12 @@ async function parseVariables(input, root) {
         for (let v of variables) {
             vars.push(await load(v));
         }
-        return (0, replacetokens_1.merge)(...vars);
+        return (0, replacetokens_1.flattenAndMerge)(separator, ...vars);
     }
     return await load(variables);
 }
 var variableFilesCount = 0;
-async function loadVariablesFromFile(name, root) {
+async function loadVariablesFromFile(name, root, separator) {
     var files = await fg.glob(name.split(';').map(v => v.trim()), {
         absolute: true,
         cwd: root,
@@ -63460,7 +63444,7 @@ async function loadVariablesFromFile(name, root) {
         }
         ++variableFilesCount;
     }
-    return (0, replacetokens_1.merge)(...vars);
+    return (0, replacetokens_1.flattenAndMerge)(separator, ...vars);
 }
 var LogLevel;
 (function (LogLevel) {

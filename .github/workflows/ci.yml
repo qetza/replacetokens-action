@@ -53,7 +53,7 @@ jobs:
       - name: Update telemetry application (linux/macos)
         if: runner.os != 'Windows'
         run: |
-          sed -i 's/const application\s*=\s*'replacetokens-action'/const application = 'replacetokens-action-dev'/ $GITHUB_WORKSPACE/dist/index.js
+          sed -i 's/const application\s*=\s*'replacetokens-action'/const application = 'replacetokens-action-dev'/' $GITHUB_WORKSPACE/dist/index.js
 
       - name: Update telemetry application (windows)
         if: runner.os == 'Windows'

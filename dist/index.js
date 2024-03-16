@@ -63403,6 +63403,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const rt = __importStar(__nccwpck_require__(49633));
+const os = __importStar(__nccwpck_require__(22037));
 const strip_json_comments_1 = __importDefault(__nccwpck_require__(30077));
 const telemetry_1 = __nccwpck_require__(12417);
 const api_1 = __nccwpck_require__(65163);
@@ -63470,7 +63471,7 @@ async function run() {
                 suffix: core.getInput('transforms-suffix') || rt.Defaults.TransformSuffix
             }
         };
-        const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
+        const sources = getSources();
         const ifNoFilesFound = getChoiceInput('if-no-files-found', ['ignore', 'warn', 'error']) || 'ignore';
         const logLevelStr = getChoiceInput('log-level', ['debug', 'info', 'warn', 'error']) || 'info';
         // override console logs
@@ -63578,6 +63579,16 @@ function getChoiceInput(name, choices, options) {
     if (!input || choices.includes(input))
         return input;
     throw new TypeError(`Unsupported value for input: ${name}\nSupport input list: '${choices.join(' | ')}'`);
+}
+function getSources() {
+    const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
+    // make sources compatible with fast-glob on win32
+    if (os.platform() === 'win32') {
+        for (const i in sources) {
+            sources[i] = sources[i].replace(/\\/g, '/');
+        }
+    }
+    return sources;
 }
 var variableFilesCount = 0;
 var variablesEnvCount = 0;

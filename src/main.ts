@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import * as rt from '@qetza/replacetokens';
+import * as os from 'os';
 import stripJsonComments from './strip-json-comments';
 import { TelemetryClient } from './telemetry';
 import { SpanStatusCode } from '@opentelemetry/api';
@@ -84,7 +85,7 @@ export async function run(): Promise<void> {
       }
     };
 
-    const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
+    const sources = getSources();
     const ifNoFilesFound = getChoiceInput('if-no-files-found', ['ignore', 'warn', 'error']) || 'ignore';
     const logLevelStr = getChoiceInput('log-level', ['debug', 'info', 'warn', 'error']) || 'info';
 
@@ -197,6 +198,19 @@ function getChoiceInput(name: string, choices: string[], options?: core.InputOpt
   if (!input || choices.includes(input)) return input;
 
   throw new TypeError(`Unsupported value for input: ${name}\nSupport input list: '${choices.join(' | ')}'`);
+}
+
+function getSources(): string[] {
+  const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
+
+  // make sources compatible with fast-glob on win32
+  if (os.platform() === 'win32') {
+    for (const i in sources) {
+      sources[i] = sources[i].replace(/\\/g, '/');
+    }
+  }
+
+  return sources;
 }
 
 var variableFilesCount = 0;

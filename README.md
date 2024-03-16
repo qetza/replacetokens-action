@@ -14,7 +14,8 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     # A multiline list of files to replace tokens in.
     # Each line supports:
     #   - multiple glob patterns separated by a semi-colon ';' using fast-glob syntax 
-    #     (you must always use forward slash '/' as a directory separator)
+    #     (you must always use forward slash '/' as a directory separator, on win32 will 
+    #     automatically replace backslash with forward slash)
     #   - outputing the result in another file adding the output path after an arrow '=>' 
     #     (if the output path is a relative path, it will be relative to the input file)
     #   - wildcard replacement in the output file name using an asterix '*' in the input 

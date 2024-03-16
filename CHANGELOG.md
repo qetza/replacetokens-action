@@ -2,6 +2,7 @@
 
 ## v1.1.1
 - Fix variable case-sensitivity ([#7](https://github.com/qetza/replacetokens-action/issues/7)).
+- Fix paths in sources incompatible with `fast-glob` syntax on win32.
 
 ## v1.1.0
 - Add support for JSON comments in _variables_ and in JSON variable files and environment variables

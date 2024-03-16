@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import * as path from 'path';
 import * as rt from '@qetza/replacetokens';
+import * as os from 'os';
 import axios from 'axios';
 import { run } from '../src/main';
 
@@ -269,6 +270,39 @@ describe('run', () => {
         /\[\{"name":"\*+","time":"[^"]+","iKey":"\*+","tags":\{"ai\.application\.ver":"1\.\d+\.\d+","ai\.cloud\.role":"server","ai\.internal\.sdkVersion":"replacetokens:2\.0\.0","ai\.operation\.id":"[^"]+","ai\.operation\.name":"replacetokens-action","ai\.user\.accountId":"c054bf9f6127dc352a184a29403ac9114f6c2a8e27cb467197cdfc1c3df119e4","ai\.user\.authUserId":"59830ebc3a4184110566bf1a290d08473dfdcbd492ce498b14cd1a5e2fa2e441"},"data":\{"baseType":"EventData","baseData":\{"ver":"2","name":"tokens\.replaced","properties":\{"os":"Windows","result":"failed","duration":\d+(?:\.\d+)?}}}}]/
       )
     );
+  });
+
+  it('sources: normalize', async () => {
+    // arrange
+    const source = path.join(__dirname, 'data', 'vars.json').replace(/\//g, '\\');
+    getMultilineInputSpy.mockImplementation(name => {
+      switch (name) {
+        case 'sources':
+          return [source];
+        default:
+          return [];
+      }
+    });
+
+    // act
+    await run();
+
+    // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
+    if (os.platform() === 'win32') {
+      expect(replaceTokenSpy).toHaveBeenCalledWith(
+        [source.replace(/\\/g, '/')],
+        expect.anything(),
+        expect.anything()
+      );
+    } else {
+      expect(replaceTokenSpy).toHaveBeenCalledWith(
+        [source],
+        expect.anything(),
+        expect.anything()
+      );
+    }
   });
 
   it('variables: object', async () => {

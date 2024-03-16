@@ -1,18 +1,5 @@
 import * as core from '@actions/core';
-import {
-  readTextFile,
-  flattenAndMerge,
-  replaceTokens,
-  Defaults,
-  Encodings,
-  Escapes,
-  MissingVariables,
-  Options,
-  TokenPatterns
-} from '@qetza/replacetokens';
-import * as fg from 'fast-glob';
-import * as path from 'path';
-import * as yaml from 'js-yaml';
+import * as rt from '@qetza/replacetokens';
 import stripJsonComments from './strip-json-comments';
 import { TelemetryClient } from './telemetry';
 import { SpanStatusCode } from '@opentelemetry/api';
@@ -43,64 +30,93 @@ export async function run(): Promise<void> {
 
   try {
     // read and validate inputs
-    const options: Options = {
+    const options: rt.Options = {
       addBOM: core.getBooleanInput('add-bom'),
-      encoding: core.getInput('encoding') || Encodings.Auto,
+      encoding: core.getInput('encoding') || rt.Encodings.Auto,
       escape: {
         chars: core.getInput('chars-to-escape'),
         escapeChar: core.getInput('escape-char'),
         type:
-          getChoiceInput('escape', [Escapes.Auto, Escapes.Custom, Escapes.Json, Escapes.Off, Escapes.Xml]) ||
-          Escapes.Auto
+          getChoiceInput('escape', [
+            rt.Escapes.Auto,
+            rt.Escapes.Custom,
+            rt.Escapes.Json,
+            rt.Escapes.Off,
+            rt.Escapes.Xml
+          ]) || rt.Escapes.Auto
       },
       missing: {
         action:
           getChoiceInput('missing-var-action', [
-            MissingVariables.Action.Keep,
-            MissingVariables.Action.None,
-            MissingVariables.Action.Replace
-          ]) || MissingVariables.Action.None,
+            rt.MissingVariables.Action.Keep,
+            rt.MissingVariables.Action.None,
+            rt.MissingVariables.Action.Replace
+          ]) || rt.MissingVariables.Action.None,
         default: core.getInput('missing-var-default'),
         log:
           getChoiceInput('missing-var-log', [
-            MissingVariables.Log.Error,
-            MissingVariables.Log.Off,
-            MissingVariables.Log.Warn
-          ]) || MissingVariables.Log.Warn
+            rt.MissingVariables.Log.Error,
+            rt.MissingVariables.Log.Off,
+            rt.MissingVariables.Log.Warn
+          ]) || rt.MissingVariables.Log.Warn
       },
       recursive: core.getBooleanInput('recursive'),
       root: core.getInput('root'),
-      separator: core.getInput('separator') || Defaults.Separator,
+      separator: core.getInput('separator') || rt.Defaults.Separator,
       token: {
         pattern:
           getChoiceInput('token-pattern', [
-            TokenPatterns.AzurePipelines,
-            TokenPatterns.Custom,
-            TokenPatterns.Default,
-            TokenPatterns.DoubleBraces,
-            TokenPatterns.DoubleUnderscores,
-            TokenPatterns.GithubActions,
-            TokenPatterns.Octopus
-          ]) || TokenPatterns.Default,
+            rt.TokenPatterns.AzurePipelines,
+            rt.TokenPatterns.Custom,
+            rt.TokenPatterns.Default,
+            rt.TokenPatterns.DoubleBraces,
+            rt.TokenPatterns.DoubleUnderscores,
+            rt.TokenPatterns.GithubActions,
+            rt.TokenPatterns.Octopus
+          ]) || rt.TokenPatterns.Default,
         prefix: core.getInput('token-prefix'),
         suffix: core.getInput('token-suffix')
       },
       transforms: {
         enabled: core.getBooleanInput('transforms'),
-        prefix: core.getInput('transforms-prefix') || Defaults.TransformPrefix,
-        suffix: core.getInput('transforms-suffix') || Defaults.TransformSuffix
+        prefix: core.getInput('transforms-prefix') || rt.Defaults.TransformPrefix,
+        suffix: core.getInput('transforms-suffix') || rt.Defaults.TransformSuffix
       }
     };
 
     const sources = core.getMultilineInput('sources', { required: true, trimWhitespace: true });
-    const variables = await parseVariables(
-      core.getInput('variables', { required: true, trimWhitespace: true }),
-      options.root || process.cwd(),
-      options.separator!
-    );
-
     const ifNoFilesFound = getChoiceInput('if-no-files-found', ['ignore', 'warn', 'error']) || 'ignore';
     const logLevelStr = getChoiceInput('log-level', ['debug', 'info', 'warn', 'error']) || 'info';
+
+    // override console logs
+    const logLevel = parseLogLevel(logLevelStr);
+    console.debug = function (...args) {
+      core.debug(args.join(' ')); // always debug to core
+
+      if (logLevel === LogLevel.Debug) core.info(args.join(' ')); // log as info to be independant of core switch
+    };
+    console.info = function (...args) {
+      if (logLevel < LogLevel.Warn) core.info(args.join(' '));
+    };
+    console.warn = function (...args) {
+      if (logLevel < LogLevel.Error) core.warning(args.join(' '));
+    };
+    console.error = function (...args) {
+      core.setFailed(args.join(' ')); // always set failure on error
+    };
+    console.group = function (...args) {
+      if (logLevel < LogLevel.Warn) core.startGroup(args.join(' '));
+    };
+    console.groupEnd = function () {
+      if (logLevel < LogLevel.Warn) core.endGroup();
+    };
+
+    // load variables
+    const variables = await rt.parseVariables(getVariables(), {
+      normalizeWin32: true,
+      root: options.root,
+      separator: options.separator
+    });
 
     // set telemetry attributes
     telemetryEvent.setAttributes({
@@ -128,31 +144,8 @@ export async function run(): Promise<void> {
       'inline-variables': inlineVariablesCount
     });
 
-    // override console logs
-    const logLevel = parseLogLevel(logLevelStr);
-    console.debug = function (...args) {
-      core.debug(args.join(' ')); // always debug to core
-
-      if (logLevel === LogLevel.Debug) core.info(args.join(' ')); // log as info to be independant of core switch
-    };
-    console.info = function (...args) {
-      if (logLevel < LogLevel.Warn) core.info(args.join(' '));
-    };
-    console.warn = function (...args) {
-      if (logLevel < LogLevel.Error) core.warning(args.join(' '));
-    };
-    console.error = function (...args) {
-      core.setFailed(args.join(' ')); // always set failure on error
-    };
-    console.group = function (...args) {
-      if (logLevel < LogLevel.Warn) core.startGroup(args.join(' '));
-    };
-    console.groupEnd = function () {
-      if (logLevel < LogLevel.Warn) core.endGroup();
-    };
-
     // replace tokens
-    const result = await replaceTokens(sources, variables, options);
+    const result = await rt.replaceTokens(sources, variables, options);
 
     if (result.files === 0) {
       switch (ifNoFilesFound) {
@@ -206,24 +199,23 @@ function getChoiceInput(name: string, choices: string[], options?: core.InputOpt
   throw new TypeError(`Unsupported value for input: ${name}\nSupport input list: '${choices.join(' | ')}'`);
 }
 
+var variableFilesCount = 0;
 var variablesEnvCount = 0;
 var inlineVariablesCount = 0;
-async function parseVariables(input: string, root: string, separator: string): Promise<{ [key: string]: any }> {
-  input = input || '{}';
+function getVariables(): string[] {
+  const input = core.getInput('variables', { required: true, trimWhitespace: true }) || '{}';
   const variables = JSON.parse(stripJsonComments(input));
 
-  let load = async (v: any) => {
+  const parse = (v: any): string => {
     if (typeof v === 'string') {
       switch (v[0]) {
         case '@': // single string referencing a file
-          return await loadVariablesFromFile(v.substring(1), root, separator);
+          ++variableFilesCount;
+          return v;
 
         case '$': // single string referencing environment variable
-          core.debug(`loading variables from environment '${v.substring(1)}'`);
-
           ++variablesEnvCount;
-
-          return JSON.parse(stripJsonComments(process.env[v.substring(1)] || '{}'));
+          return v;
 
         default: // unsupported
           throw new Error(
@@ -234,52 +226,20 @@ async function parseVariables(input: string, root: string, separator: string): P
 
     inlineVariablesCount += Object.keys(v).length;
 
-    return v;
+    return JSON.stringify(v);
   };
 
   if (Array.isArray(variables)) {
     // merge inputs
-    const vars: { [key: string]: any }[] = [];
+    const vars: string[] = [];
     for (let v of variables) {
-      vars.push(await load(v));
+      vars.push(parse(v));
     }
 
-    return flattenAndMerge(separator, ...vars);
+    return vars;
   }
 
-  return await load(variables);
-}
-
-var variableFilesCount = 0;
-async function loadVariablesFromFile(name: string, root: string, separator: string): Promise<{ [key: string]: any }> {
-  var files = await fg.glob(
-    name.split(';').map(v => v.trim()),
-    {
-      absolute: true,
-      cwd: root,
-      onlyFiles: true,
-      unique: true
-    }
-  );
-
-  const vars: { [key: string]: any }[] = [];
-  for (const file of files) {
-    core.debug(`loading variables from file '${file}'`);
-
-    const content = (await readTextFile(file)).content;
-
-    if (['.yml', '.yaml'].includes(path.extname(file).toLowerCase())) {
-      yaml.loadAll(content, (v: any) => {
-        vars.push(v);
-      });
-    } else {
-      vars.push(JSON.parse(stripJsonComments(content || '{}')));
-    }
-
-    ++variableFilesCount;
-  }
-
-  return flattenAndMerge(separator, ...vars);
+  return [parse(variables)];
 }
 
 enum LogLevel {

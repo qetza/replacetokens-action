@@ -78,7 +78,7 @@ jobs:
             [
               ${{ toJSON(vars) }},
               ${{ toJSON(secrets) }},
-              { "VAR2": "#{inline}#value2", "inline": "inline_" },
+              { "var2": "#{INLINE}#value2", "inline": "inline_" },
               ${{ toJSON(format('@{0}/tests/data/vars.jsonc', github.workspace)) }},
               "@**/*.(json|yml);!**/settings*",
               "$ENV_VARS"
@@ -88,7 +88,7 @@ jobs:
           recursive: true
           transforms: true
         env:
-          ENV_VARS: '{ "VAR4": "env_value4" }'
+          ENV_VARS: '{ "var4": "env_value4" }'
 
       - name: Check action outputs
         run: |

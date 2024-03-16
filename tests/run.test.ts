@@ -273,7 +273,7 @@ describe('run', () => {
 
   it('variables: object', async () => {
     // arrange
-    const vars = { VAR1: 'value1', VAR2: 'value2', SECRET1: 'secret1' };
+    const vars = { var1: 'value1', var2: 'value2', SECRET1: 'secret1' };
     getInputSpy.mockImplementation(name => {
       switch (name) {
         case 'variables':
@@ -289,12 +289,16 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), vars, expect.anything());
+    expect(replaceTokenSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      { VAR1: 'value1', VAR2: 'value2', SECRET1: 'secret1' },
+      expect.anything()
+    );
   });
 
   it('variables: array', async () => {
     // arrange
-    const vars = { VAR1: 'value1', VAR2: 'value2', SECRET1: 'secret1' };
+    const vars = { var1: 'value1', var2: 'value2', SECRET1: 'secret1' };
     getInputSpy.mockImplementation(name => {
       switch (name) {
         case 'variables':
@@ -310,7 +314,11 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), vars, expect.anything());
+    expect(replaceTokenSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      { VAR1: 'value1', VAR2: 'value2', SECRET1: 'secret1' },
+      expect.anything()
+    );
   });
 
   it('variables: file', async () => {
@@ -330,15 +338,9 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(debugSpy).toHaveBeenCalledWith(
-      `loading variables from file '${path.join(__dirname, 'data/vars.json').replace(/\\/g, '/')}'`
-    );
-    expect(debugSpy).toHaveBeenCalledWith(
-      `loading variables from file '${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}'`
-    );
-    expect(debugSpy).toHaveBeenCalledWith(
-      `loading variables from file '${path.join(__dirname, 'data/vars.yml').replace(/\\/g, '/')}'`
-    );
+    expect(debugSpy).toHaveBeenCalledWith(`loading variables from file '${path.join(__dirname, 'data/vars.json')}'`);
+    expect(debugSpy).toHaveBeenCalledWith(`loading variables from file '${path.join(__dirname, 'data/vars.jsonc')}'`);
+    expect(debugSpy).toHaveBeenCalledWith(`loading variables from file '${path.join(__dirname, 'data/vars.yml')}'`);
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
@@ -351,7 +353,7 @@ describe('run', () => {
     // arrange
     jest.replaceProperty(process, 'env', {
       ENV_VARS: `{
-      "VAR1": "value1" // inline comment
+      "var1": "value1" // inline comment
     }`
     });
 
@@ -370,21 +372,21 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(debugSpy).toHaveBeenCalledWith("loading variables from environment 'ENV_VARS'");
+    expect(debugSpy).toHaveBeenCalledWith("loading variables from env 'ENV_VARS'");
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), { VAR1: 'value1' }, expect.anything());
   });
 
   it('variables: merge', async () => {
     // arrange
-    jest.replaceProperty(process, 'env', { ENV_VARS: JSON.stringify({ VAR2: 'env_value2' }) });
+    jest.replaceProperty(process, 'env', { ENV_VARS: JSON.stringify({ var2: 'env_value2' }) });
 
     getInputSpy.mockImplementation(name => {
       switch (name) {
         case 'variables':
           return JSON.stringify([
-            { VAR1: 'value1', VAR2: 'value2', VAR3: 'value3' },
-            [1, true, { VAR6: 'value6' }],
+            { VAR1: 'value1', VAR2: 'value2', var3: 'value3' },
+            [1, true, { var6: 'value6' }],
             '$ENV_VARS',
             `@${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}`,
             '@**/vars.(yml|yaml)'
@@ -400,13 +402,9 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(debugSpy).toHaveBeenCalledWith(
-      `loading variables from file '${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}'`
-    );
-    expect(debugSpy).toHaveBeenCalledWith(
-      `loading variables from file '${path.join(__dirname, 'data/vars.yml').replace(/\\/g, '/')}'`
-    );
-    expect(debugSpy).toHaveBeenCalledWith("loading variables from environment 'ENV_VARS'");
+    expect(debugSpy).toHaveBeenCalledWith(`loading variables from file '${path.join(__dirname, 'data/vars.jsonc')}'`);
+    expect(debugSpy).toHaveBeenCalledWith(`loading variables from file '${path.join(__dirname, 'data/vars.yml')}'`);
+    expect(debugSpy).toHaveBeenCalledWith("loading variables from env 'ENV_VARS'");
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),

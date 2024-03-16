@@ -291,17 +291,9 @@ describe('run', () => {
     expect(setFailedSpy).not.toHaveBeenCalled();
 
     if (os.platform() === 'win32') {
-      expect(replaceTokenSpy).toHaveBeenCalledWith(
-        [source.replace(/\\/g, '/')],
-        expect.anything(),
-        expect.anything()
-      );
+      expect(replaceTokenSpy).toHaveBeenCalledWith([source.replace(/\\/g, '/')], expect.anything(), expect.anything());
     } else {
-      expect(replaceTokenSpy).toHaveBeenCalledWith(
-        [source],
-        expect.anything(),
-        expect.anything()
-      );
+      expect(replaceTokenSpy).toHaveBeenCalledWith([source], expect.anything(), expect.anything());
     }
   });
 

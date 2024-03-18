@@ -1,16 +1,16 @@
-import { ExportResult, ExportResultCode, hrTimeToMilliseconds, hrTimeToNanoseconds } from '@opentelemetry/core';
+import { ExportResult, ExportResultCode, hrTimeToMilliseconds } from '@opentelemetry/core';
 import { SpanStatusCode, Tracer, Span } from '@opentelemetry/api';
 import { BasicTracerProvider, SimpleSpanProcessor, SpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import * as crypto from 'crypto';
 import axios from 'axios';
 
 const application = 'replacetokens-action';
-const version = '1.1.0';
-const url = 'https://westeurope-5.in.applicationinsights.azure.com/v2/track';
-const key = 'e18a8793-c093-46f9-8c3b-433c9553eb7f';
+const version = '1.0.0';
+const endpoint = 'https://insights-collector.eu01.nr-data.net/v1/accounts/4392697/events';
+const key = 'eu01xxc28887c2d47d9719ed24a74df5FFFFNRAL';
 const timeout = 3000;
 
-class ApplicationInsightsExporter implements SpanExporter {
+class NewRelicExporter implements SpanExporter {
   private readonly _log: (message: string) => void;
   private _isShutdown = false;
 
@@ -28,13 +28,7 @@ class ApplicationInsightsExporter implements SpanExporter {
 
     if (spans.length > 0) {
       const events = spans.map(s => this._spanToEvent(s));
-      this._log(
-        `telemetry: ${JSON.stringify(
-          events.map(e => {
-            return { ...e, name: '*****', iKey: '*****' };
-          })
-        )}`
-      );
+      this._log(`telemetry: ${JSON.stringify(events)}`);
 
       resultCallback(await this._send(events));
     }
@@ -50,49 +44,34 @@ class ApplicationInsightsExporter implements SpanExporter {
 
   private _spanToEvent(span: ReadableSpan): { [key: string]: any } {
     return {
-      name: `Microsoft.ApplicationInsights.Dev.${key}.Event`,
-      time: new Date(hrTimeToNanoseconds(span.startTime) / 1000000).toISOString(),
-      iKey: key,
-      tags: {
-        'ai.application.ver': version,
-        'ai.cloud.role': span.attributes['host'],
-        'ai.internal.sdkVersion': 'replacetokens:2.0.0',
-        'ai.operation.id': span.spanContext().traceId,
-        'ai.operation.name': application,
-        'ai.user.accountId': span.attributes['account'],
-        'ai.user.authUserId': span.attributes['workflow']
-      },
-      data: {
-        baseType: 'EventData',
-        baseData: {
-          ver: '2',
-          name: 'tokens.replaced',
-          properties: {
-            ...span.attributes,
-            host: undefined,
-            account: undefined,
-            workflow: undefined,
-            result: (() => {
-              switch (span.status.code) {
-                case SpanStatusCode.ERROR:
-                  return 'failed';
-                case SpanStatusCode.OK:
-                  return 'success';
-                default:
-                  return '';
-              }
-            })(),
-            duration: hrTimeToMilliseconds(span.duration)
-          }
+      eventType: 'TokensReplaced',
+      application: application,
+      version: version,
+      ...span.attributes,
+      result: (() => {
+        switch (span.status.code) {
+          case SpanStatusCode.ERROR:
+            return 'failed';
+          case SpanStatusCode.OK:
+            return 'success';
+          default:
+            return '';
         }
-      }
+      })(),
+      duration: hrTimeToMilliseconds(span.duration)
     };
   }
 
   private async _send(data: any[]): Promise<ExportResult> {
     try {
-      const options: axios.AxiosRequestConfig<any[]> = { timeout: timeout };
-      await axios.post(url, data, options);
+      const options: axios.AxiosRequestConfig<any[]> = {
+        headers: {
+          'Api-Key': key,
+          'Content-Type': 'application/json'
+        },
+        timeout: timeout
+      };
+      await axios.post(endpoint, data, options);
 
       return { code: ExportResultCode.SUCCESS };
     } catch (e) {
@@ -109,7 +88,7 @@ export class TelemetryClient {
   private readonly _host: string;
   private readonly _os: string;
 
-  private _isApplicationInsightsExporterRegistered = false;
+  private _isEnabled = false;
 
   constructor(account?: string, workflow?: string, host?: string, os?: string) {
     this._provider = new BasicTracerProvider({ forceFlushTimeoutMillis: timeout });
@@ -128,14 +107,14 @@ export class TelemetryClient {
 
   startSpan(name: string): Span {
     return this._tracer.startSpan(name, {
-      attributes: { account: this._account, workflow: this._workflow, host: this._host, os: this._os }
+      attributes: { account: this._account, pipeline: this._workflow, host: this._host, os: this._os }
     });
   }
 
-  useApplicationInsightsExporter(options: { log: (message: string) => void }) {
-    if (this._isApplicationInsightsExporterRegistered) return;
+  enableTelemetry(options: { log: (message: string) => void }) {
+    if (this._isEnabled) return;
 
-    this._provider.addSpanProcessor(new SimpleSpanProcessor(new ApplicationInsightsExporter(options.log)));
-    this._isApplicationInsightsExporterRegistered = true;
+    this._provider.addSpanProcessor(new SimpleSpanProcessor(new NewRelicExporter(options.log)));
+    this._isEnabled = true;
   }
 }

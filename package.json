@@ -1,6 +1,6 @@
 {
   "name": "replacetokens-action",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "An action to replace tokens with variables and/or secrets.",
   "private": true,
   "author": "Guillaume ROUCHON",
@@ -30,7 +30,7 @@
     "build": "npm run format && npm run package",
     "format": "prettier --write **/*.ts",
     "format:check": "prettier --check **/*.ts",
-    "package": "ncc build src/index.ts --license licenses.txt",
+    "package": "ncc build src/index.ts --license licenses.txt && node scripts/package.js",
     "test": "jest"
   },
   "dependencies": {

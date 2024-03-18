@@ -246,7 +246,7 @@ describe('run', () => {
 
     expect(debugSpy).toHaveBeenCalledWith(
       expect.stringMatching(
-        /\[\{"name":"\*+","time":"[^"]+","iKey":"\*+","tags":\{"ai\.application\.ver":"1\.\d+\.\d+","ai\.cloud\.role":"server","ai\.internal\.sdkVersion":"replacetokens:2\.0\.0","ai\.operation\.id":"[^"]+","ai\.operation\.name":"replacetokens-action","ai\.user\.accountId":"c054bf9f6127dc352a184a29403ac9114f6c2a8e27cb467197cdfc1c3df119e4","ai\.user\.authUserId":"59830ebc3a4184110566bf1a290d08473dfdcbd492ce498b14cd1a5e2fa2e441"},"data":\{"baseType":"EventData","baseData":\{"ver":"2","name":"tokens\.replaced","properties":\{"os":"Windows","sources":3,"add-bom":false,"chars-to-escape":"","encoding":"auto","escape":"auto","escape-char":"","if-no-files-found":"ignore","log-level":"info","missing-var-action":"none","missing-var-default":"","missing-var-log":"warn","recusrive":false,"separator":"\.","token-pattern":"default","token-prefix":"","token-suffix":"","transforms":false,"transforms-prefix":"\(","transforms-suffix":"\)","variable-files":0,"variable-envs":0,"inline-variables":0,"output-defaults":1,"output-files":2,"output-replaced":3,"output-tokens":4,"output-transforms":5,"result":"success","duration":\d+(?:\.\d+)?}}}}]/
+        /\[\{"eventType":"TokensReplaced","application":"replacetokens-action","version":"1\.\d+\.\d+","account":"c054bf9f6127dc352a184a29403ac9114f6c2a8e27cb467197cdfc1c3df119e4","pipeline":"59830ebc3a4184110566bf1a290d08473dfdcbd492ce498b14cd1a5e2fa2e441","host":"server","os":"Windows","sources":3,"add-bom":false,"chars-to-escape":"","encoding":"auto","escape":"auto","escape-char":"","if-no-files-found":"ignore","log-level":"info","missing-var-action":"none","missing-var-default":"","missing-var-log":"warn","recusrive":false,"separator":"\.","token-pattern":"default","token-prefix":"","token-suffix":"","transforms":false,"transforms-prefix":"\(","transforms-suffix":"\)","variable-files":0,"variable-envs":0,"inline-variables":0,"output-defaults":1,"output-files":2,"output-replaced":3,"output-tokens":4,"output-transforms":5,"result":"success","duration":\d+(?:\.\d+)?}]/
       )
     );
   });
@@ -267,7 +267,7 @@ describe('run', () => {
 
     expect(debugSpy).toHaveBeenCalledWith(
       expect.stringMatching(
-        /\[\{"name":"\*+","time":"[^"]+","iKey":"\*+","tags":\{"ai\.application\.ver":"1\.\d+\.\d+","ai\.cloud\.role":"server","ai\.internal\.sdkVersion":"replacetokens:2\.0\.0","ai\.operation\.id":"[^"]+","ai\.operation\.name":"replacetokens-action","ai\.user\.accountId":"c054bf9f6127dc352a184a29403ac9114f6c2a8e27cb467197cdfc1c3df119e4","ai\.user\.authUserId":"59830ebc3a4184110566bf1a290d08473dfdcbd492ce498b14cd1a5e2fa2e441"},"data":\{"baseType":"EventData","baseData":\{"ver":"2","name":"tokens\.replaced","properties":\{"os":"Windows","result":"failed","duration":\d+(?:\.\d+)?}}}}]/
+        /\[\{"eventType":"TokensReplaced","application":"replacetokens-action","version":"1\.\d+\.\d+","account":"c054bf9f6127dc352a184a29403ac9114f6c2a8e27cb467197cdfc1c3df119e4","pipeline":"59830ebc3a4184110566bf1a290d08473dfdcbd492ce498b14cd1a5e2fa2e441","host":"server","os":"Windows","result":"failed","duration":\d+(?:\.\d+)?}]/
       )
     );
   });

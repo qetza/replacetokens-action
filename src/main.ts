@@ -24,7 +24,7 @@ export async function run(): Promise<void> {
     !core.getBooleanInput('no-telemetry') &&
     !['true', '1'].includes(process.env['REPLACETOKENS_TELEMETRY_OPTOUT'] || '')
   ) {
-    telemetry.useApplicationInsightsExporter({ log: core.debug });
+    telemetry.enableTelemetry({ log: core.debug });
   }
 
   const telemetryEvent = telemetry.startSpan('run');

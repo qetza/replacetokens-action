@@ -1,4 +1,6 @@
 # Changelog
+## v1.1.2
+- Change telemetry provider.
 
 ## v1.1.1
 - Fix variable case-sensitivity ([#7](https://github.com/qetza/replacetokens-action/issues/7)).

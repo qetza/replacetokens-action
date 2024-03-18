@@ -63417,7 +63417,7 @@ async function run() {
     const telemetry = new telemetry_1.TelemetryClient(process.env['GITHUB_REPOSITORY'], process.env['GITHUB_WORKFLOW'], process.env['GITHUB_SERVER_URL'] === 'https://github.com' ? 'cloud' : 'server', process.env['RUNNER_OS']);
     if (!core.getBooleanInput('no-telemetry') &&
         !['true', '1'].includes(process.env['REPLACETOKENS_TELEMETRY_OPTOUT'] || '')) {
-        telemetry.useApplicationInsightsExporter({ log: core.debug });
+        telemetry.enableTelemetry({ log: core.debug });
     }
     const telemetryEvent = telemetry.startSpan('run');
     try {
@@ -63803,11 +63803,11 @@ const sdk_trace_base_1 = __nccwpck_require__(29253);
 const crypto = __importStar(__nccwpck_require__(6113));
 const axios_1 = __importDefault(__nccwpck_require__(88757));
 const application = 'replacetokens-action';
-const version = '1.1.0';
-const url = 'https://westeurope-5.in.applicationinsights.azure.com/v2/track';
-const key = 'e18a8793-c093-46f9-8c3b-433c9553eb7f';
+const version = '1.1.2';
+const endpoint = 'https://insights-collector.eu01.nr-data.net/v1/accounts/4392697/events';
+const key = 'eu01xxc28887c2d47d9719ed24a74df5FFFFNRAL';
 const timeout = 3000;
-class ApplicationInsightsExporter {
+class NewRelicExporter {
     _log;
     _isShutdown = false;
     constructor(log) {
@@ -63821,9 +63821,7 @@ class ApplicationInsightsExporter {
         }
         if (spans.length > 0) {
             const events = spans.map(s => this._spanToEvent(s));
-            this._log(`telemetry: ${JSON.stringify(events.map(e => {
-                return { ...e, name: '*****', iKey: '*****' };
-            }))}`);
+            this._log(`telemetry: ${JSON.stringify(events)}`);
             resultCallback(await this._send(events));
         }
         resultCallback({ code: core_1.ExportResultCode.SUCCESS });
@@ -63834,48 +63832,33 @@ class ApplicationInsightsExporter {
     }
     _spanToEvent(span) {
         return {
-            name: `Microsoft.ApplicationInsights.Dev.${key}.Event`,
-            time: new Date((0, core_1.hrTimeToNanoseconds)(span.startTime) / 1000000).toISOString(),
-            iKey: key,
-            tags: {
-                'ai.application.ver': version,
-                'ai.cloud.role': span.attributes['host'],
-                'ai.internal.sdkVersion': 'replacetokens:2.0.0',
-                'ai.operation.id': span.spanContext().traceId,
-                'ai.operation.name': application,
-                'ai.user.accountId': span.attributes['account'],
-                'ai.user.authUserId': span.attributes['workflow']
-            },
-            data: {
-                baseType: 'EventData',
-                baseData: {
-                    ver: '2',
-                    name: 'tokens.replaced',
-                    properties: {
-                        ...span.attributes,
-                        host: undefined,
-                        account: undefined,
-                        workflow: undefined,
-                        result: (() => {
-                            switch (span.status.code) {
-                                case api_1.SpanStatusCode.ERROR:
-                                    return 'failed';
-                                case api_1.SpanStatusCode.OK:
-                                    return 'success';
-                                default:
-                                    return '';
-                            }
-                        })(),
-                        duration: (0, core_1.hrTimeToMilliseconds)(span.duration)
-                    }
+            eventType: 'TokensReplaced',
+            application: application,
+            version: version,
+            ...span.attributes,
+            result: (() => {
+                switch (span.status.code) {
+                    case api_1.SpanStatusCode.ERROR:
+                        return 'failed';
+                    case api_1.SpanStatusCode.OK:
+                        return 'success';
+                    default:
+                        return '';
                 }
-            }
+            })(),
+            duration: (0, core_1.hrTimeToMilliseconds)(span.duration)
         };
     }
     async _send(data) {
         try {
-            const options = { timeout: timeout };
-            await axios_1.default.post(url, data, options);
+            const options = {
+                headers: {
+                    'Api-Key': key,
+                    'Content-Type': 'application/json'
+                },
+                timeout: timeout
+            };
+            await axios_1.default.post(endpoint, data, options);
             return { code: core_1.ExportResultCode.SUCCESS };
         }
         catch (e) {
@@ -63890,7 +63873,7 @@ class TelemetryClient {
     _workflow;
     _host;
     _os;
-    _isApplicationInsightsExporterRegistered = false;
+    _isEnabled = false;
     constructor(account, workflow, host, os) {
         this._provider = new sdk_trace_base_1.BasicTracerProvider({ forceFlushTimeoutMillis: timeout });
         this._tracer = this._provider.getTracer(application, version);
@@ -63907,14 +63890,14 @@ class TelemetryClient {
     }
     startSpan(name) {
         return this._tracer.startSpan(name, {
-            attributes: { account: this._account, workflow: this._workflow, host: this._host, os: this._os }
+            attributes: { account: this._account, pipeline: this._workflow, host: this._host, os: this._os }
         });
     }
-    useApplicationInsightsExporter(options) {
-        if (this._isApplicationInsightsExporterRegistered)
+    enableTelemetry(options) {
+        if (this._isEnabled)
             return;
-        this._provider.addSpanProcessor(new sdk_trace_base_1.SimpleSpanProcessor(new ApplicationInsightsExporter(options.log)));
-        this._isApplicationInsightsExporterRegistered = true;
+        this._provider.addSpanProcessor(new sdk_trace_base_1.SimpleSpanProcessor(new NewRelicExporter(options.log)));
+        this._isEnabled = true;
     }
 }
 exports.TelemetryClient = TelemetryClient;

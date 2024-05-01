@@ -292,9 +292,13 @@ describe('run', () => {
     expect(setFailedSpy).not.toHaveBeenCalled();
 
     if (os.platform() === 'win32') {
-      expect(replaceTokenSpy).toHaveBeenCalledWith([source.replace(/\\/g, '/')], expect.anything(), expect.anything());
+      expect(replaceTokenSpy).toHaveBeenCalledWith(
+        [source.replace(/\\/g, '/')],
+        expect.any(Function),
+        expect.anything()
+      );
     } else {
-      expect(replaceTokenSpy).toHaveBeenCalledWith([source], expect.anything(), expect.anything());
+      expect(replaceTokenSpy).toHaveBeenCalledWith([source], expect.any(Function), expect.anything());
     }
   });
 
@@ -507,7 +511,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ addBOM: true })
     );
   });
@@ -569,7 +573,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ escape: expect.objectContaining({ chars: 'abcd' }) })
     );
   });
@@ -593,7 +597,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ encoding: 'encoding' })
     );
   });
@@ -617,7 +621,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ escape: expect.objectContaining({ escapeChar: '/' }) })
     );
   });
@@ -641,7 +645,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ escape: expect.objectContaining({ type: 'json' }) })
     );
   });
@@ -813,7 +817,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ missing: expect.objectContaining({ action: 'keep' }) })
     );
   });
@@ -837,7 +841,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ missing: expect.objectContaining({ default: 'default' }) })
     );
   });
@@ -861,7 +865,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ missing: expect.objectContaining({ log: 'error' }) })
     );
   });
@@ -941,7 +945,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ recursive: true })
     );
   });
@@ -965,7 +969,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ root: 'root' })
     );
   });
@@ -1018,7 +1022,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ token: expect.objectContaining({ pattern: 'octopus' }) })
     );
   });
@@ -1042,7 +1046,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ token: expect.objectContaining({ prefix: '[[' }) })
     );
   });
@@ -1066,7 +1070,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ token: expect.objectContaining({ suffix: ']]' }) })
     );
   });
@@ -1090,7 +1094,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ transforms: expect.objectContaining({ enabled: true }) })
     );
   });
@@ -1114,7 +1118,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ transforms: expect.objectContaining({ prefix: '[[' }) })
     );
   });
@@ -1138,7 +1142,7 @@ describe('run', () => {
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(
       expect.anything(),
-      expect.anything(),
+      expect.any(Function),
       expect.objectContaining({ transforms: expect.objectContaining({ suffix: ']]' }) })
     );
   });

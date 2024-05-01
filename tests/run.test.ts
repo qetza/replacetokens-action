@@ -668,7 +668,7 @@ describe('run', () => {
       }
     });
 
-    replaceTokenSpy.mockResolvedValue({ defaults: 0, files: 0, replaced: 0, tokens: 0, transforms: 0 })
+    replaceTokenSpy.mockResolvedValue({ defaults: 0, files: 0, replaced: 0, tokens: 0, transforms: 0 });
 
     // act
     await run();
@@ -690,7 +690,7 @@ describe('run', () => {
       }
     });
 
-    replaceTokenSpy.mockResolvedValue({ defaults: 0, files: 0, replaced: 0, tokens: 0, transforms: 0 })
+    replaceTokenSpy.mockResolvedValue({ defaults: 0, files: 0, replaced: 0, tokens: 0, transforms: 0 });
 
     // act
     await run();
@@ -712,7 +712,7 @@ describe('run', () => {
       }
     });
 
-    replaceTokenSpy.mockResolvedValue({ defaults: 0, files: 0, replaced: 0, tokens: 0, transforms: 0 })
+    replaceTokenSpy.mockResolvedValue({ defaults: 0, files: 0, replaced: 0, tokens: 0, transforms: 0 });
 
     // act
     await run();

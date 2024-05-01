@@ -63752,8 +63752,10 @@ async function run() {
             switch (ifNoFilesFound) {
                 case 'warn':
                     core.warning('No files were found with provided sources.');
+                    break;
                 case 'error':
                     core.setFailed('No files were found with provided sources.');
+                    break;
                 default:
                     core.info('No files were found with provided sources.');
             }

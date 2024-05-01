@@ -657,6 +657,70 @@ describe('run', () => {
     );
   });
 
+  it('if-no-files-found: ignore', async () => {
+    // arrange
+    getInputSpy.mockImplementation(name => {
+      switch (name) {
+        case 'if-no-files-found':
+          return 'ignore';
+        default:
+          return '';
+      }
+    });
+
+    replaceTokenSpy.mockResolvedValue({ defaults: 0, files: 0, replaced: 0, tokens: 0, transforms: 0 });
+
+    // act
+    await run();
+
+    // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
+    expect(infoSpy).toHaveBeenCalledWith('No files were found with provided sources.');
+  });
+
+  it('if-no-files-found: warn', async () => {
+    // arrange
+    getInputSpy.mockImplementation(name => {
+      switch (name) {
+        case 'if-no-files-found':
+          return 'warn';
+        default:
+          return '';
+      }
+    });
+
+    replaceTokenSpy.mockResolvedValue({ defaults: 0, files: 0, replaced: 0, tokens: 0, transforms: 0 });
+
+    // act
+    await run();
+
+    // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
+    expect(warningSpy).toHaveBeenCalledWith('No files were found with provided sources.');
+  });
+
+  it('if-no-files-found: error', async () => {
+    // arrange
+    getInputSpy.mockImplementation(name => {
+      switch (name) {
+        case 'if-no-files-found':
+          return 'error';
+        default:
+          return '';
+      }
+    });
+
+    replaceTokenSpy.mockResolvedValue({ defaults: 0, files: 0, replaced: 0, tokens: 0, transforms: 0 });
+
+    // act
+    await run();
+
+    // assert
+    expect(setFailedSpy).toHaveBeenCalledWith('No files were found with provided sources.');
+  });
+
   it('include-dot-paths', async () => {
     // arrange
     getBooleanInputSpy.mockImplementation(name => {

@@ -72,7 +72,7 @@ inputs:
     description: 'The behavior if no files are found: ignore, warn, error.'
     default: 'ignore'
   include-dot-paths:
-    description: 'Include directories and files starting with a dot '.' in glob matching results for sources and additionalVariables.'
+    description: 'Include directories and files starting with a dot ''.'' in glob matching results for sources and additionalVariables.'
     default: 'false'
   log-level:
     description: >

@@ -15,6 +15,7 @@ let setFailedSpy: jest.SpiedFunction<typeof core.setFailed>;
 let setOutputSpy: jest.SpiedFunction<typeof core.setOutput>;
 let startGroupSpy: jest.SpiedFunction<typeof core.startGroup>;
 let warningSpy: jest.SpiedFunction<typeof core.warning>;
+let loadVariablesSpy: jest.SpiedFunction<typeof rt.loadVariables>;
 let replaceTokenSpy: jest.SpiedFunction<typeof rt.replaceTokens>;
 let postSpy: jest.SpiedFunction<typeof axios.post>;
 
@@ -37,6 +38,7 @@ describe('run', () => {
     setOutputSpy = jest.spyOn(core, 'setOutput').mockImplementation();
     startGroupSpy = jest.spyOn(core, 'startGroup').mockImplementation();
     warningSpy = jest.spyOn(core, 'warning').mockImplementation();
+    loadVariablesSpy = jest.spyOn(rt, 'loadVariables').mockResolvedValue({});
     replaceTokenSpy = jest
       .spyOn(rt, 'replaceTokens')
       .mockResolvedValue({ defaults: 1, files: 2, replaced: 3, tokens: 4, transforms: 5 });
@@ -185,38 +187,34 @@ describe('run', () => {
 
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
+    expect(loadVariablesSpy).not.toHaveBeenCalled();
 
-    expect(replaceTokenSpy).toHaveBeenCalledWith(
-      sources,
-      {},
-      {
-        addBOM: false,
-        encoding: rt.Encodings.Auto,
-        escape: {
-          chars: '',
-          escapeChar: '',
-          type: rt.Escapes.Auto
-        },
-        missing: {
-          action: rt.MissingVariables.Action.None,
-          default: '',
-          log: rt.MissingVariables.Log.Warn
-        },
-        recursive: false,
-        root: '',
-        separator: rt.Defaults.Separator,
-        token: {
-          pattern: rt.TokenPatterns.Default,
-          prefix: '',
-          suffix: ''
-        },
-        transforms: {
-          enabled: false,
-          prefix: rt.Defaults.TransformPrefix,
-          suffix: rt.Defaults.TransformSuffix
-        }
+    expect(replaceTokenSpy).toHaveBeenCalledWith(sources, expect.any(Function), {
+      addBOM: false,
+      encoding: rt.Encodings.Auto,
+      escape: {
+        chars: '',
+        escapeChar: '',
+        type: rt.Escapes.Auto
+      },
+      missing: {
+        action: rt.MissingVariables.Action.None,
+        default: '',
+        log: rt.MissingVariables.Log.Warn
+      },
+      recursive: false,
+      root: '',
+      token: {
+        pattern: rt.TokenPatterns.Default,
+        prefix: '',
+        suffix: ''
+      },
+      transforms: {
+        enabled: false,
+        prefix: rt.Defaults.TransformPrefix,
+        suffix: rt.Defaults.TransformSuffix
       }
-    );
+    });
     expect(setOutputSpy).toHaveBeenCalledWith('defaults', 1);
     expect(setOutputSpy).toHaveBeenCalledWith('files', 2);
     expect(setOutputSpy).toHaveBeenCalledWith('replaced', 3);
@@ -315,11 +313,13 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(replaceTokenSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      { VAR1: 'value1', VAR2: 'value2', SECRET1: 'secret1' },
-      expect.anything()
-    );
+    expect(loadVariablesSpy).toHaveBeenCalledWith([JSON.stringify(vars)], {
+      separator: rt.Defaults.Separator,
+      normalizeWin32: true,
+      root: ''
+    });
+
+    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
   });
 
   it('variables: array', async () => {
@@ -340,19 +340,22 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(replaceTokenSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      { VAR1: 'value1', VAR2: 'value2', SECRET1: 'secret1' },
-      expect.anything()
-    );
+    expect(loadVariablesSpy).toHaveBeenCalledWith([JSON.stringify(vars)], {
+      separator: rt.Defaults.Separator,
+      normalizeWin32: true,
+      root: ''
+    });
+
+    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
   });
 
   it('variables: file', async () => {
     // arrange
+    const vars = '@tests/**/*.(json|jsonc|yml|yaml);!**/settings*';
     getInputSpy.mockImplementation(name => {
       switch (name) {
         case 'variables':
-          return JSON.stringify('@tests/**/*.(json|jsonc|yml|yaml);!**/settings*');
+          return JSON.stringify(vars);
         default:
           return '';
       }
@@ -364,19 +367,18 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(debugSpy).toHaveBeenCalledWith(`loading variables from file '${path.join(__dirname, 'data/vars.json')}'`);
-    expect(debugSpy).toHaveBeenCalledWith(`loading variables from file '${path.join(__dirname, 'data/vars.jsonc')}'`);
-    expect(debugSpy).toHaveBeenCalledWith(`loading variables from file '${path.join(__dirname, 'data/vars.yml')}'`);
+    expect(loadVariablesSpy).toHaveBeenCalledWith([vars], {
+      separator: rt.Defaults.Separator,
+      normalizeWin32: true,
+      root: ''
+    });
 
-    expect(replaceTokenSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      { VAR3: 'file_value3', VAR4: 'file_value4', VAR5: 'file_value5' },
-      expect.anything()
-    );
+    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
   });
 
   it('variables: env', async () => {
     // arrange
+    const vars = '$ENV_VARS';
     jest.replaceProperty(process, 'env', {
       ENV_VARS: `{
       "var1": "value1" // inline comment
@@ -386,7 +388,7 @@ describe('run', () => {
     getInputSpy.mockImplementation(name => {
       switch (name) {
         case 'variables':
-          return JSON.stringify('$ENV_VARS');
+          return JSON.stringify(vars);
         default:
           return '';
       }
@@ -398,25 +400,30 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(debugSpy).toHaveBeenCalledWith("loading variables from env 'ENV_VARS'");
+    expect(loadVariablesSpy).toHaveBeenCalledWith([vars], {
+      separator: rt.Defaults.Separator,
+      normalizeWin32: true,
+      root: ''
+    });
 
-    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), { VAR1: 'value1' }, expect.anything());
+    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
   });
 
   it('variables: merge', async () => {
     // arrange
+    const vars = [
+      { VAR1: 'value1', VAR2: 'value2', var3: 'value3' },
+      [1, true, { var6: 'value6' }],
+      '$ENV_VARS',
+      `@${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}`,
+      '@**/vars.(yml|yaml)'
+    ];
     jest.replaceProperty(process, 'env', { ENV_VARS: JSON.stringify({ var2: 'env_value2' }) });
 
     getInputSpy.mockImplementation(name => {
       switch (name) {
         case 'variables':
-          return JSON.stringify([
-            { VAR1: 'value1', VAR2: 'value2', var3: 'value3' },
-            [1, true, { var6: 'value6' }],
-            '$ENV_VARS',
-            `@${path.join(__dirname, 'data/vars.jsonc').replace(/\\/g, '/')}`,
-            '@**/vars.(yml|yaml)'
-          ]);
+          return JSON.stringify(vars);
         default:
           return '';
       }
@@ -428,23 +435,16 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(debugSpy).toHaveBeenCalledWith(`loading variables from file '${path.join(__dirname, 'data/vars.jsonc')}'`);
-    expect(debugSpy).toHaveBeenCalledWith(`loading variables from file '${path.join(__dirname, 'data/vars.yml')}'`);
-    expect(debugSpy).toHaveBeenCalledWith("loading variables from env 'ENV_VARS'");
-
-    expect(replaceTokenSpy).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(loadVariablesSpy).toHaveBeenCalledWith(
+      [JSON.stringify(vars[0]), JSON.stringify(vars[1]), vars[2], vars[3], vars[4]],
       {
-        VAR1: 'value1',
-        VAR2: 'env_value2',
-        VAR3: 'file_value3',
-        VAR5: 'file_value5',
-        '0': '1',
-        '1': 'true',
-        '2.VAR6': 'value6'
-      },
-      expect.anything()
+        separator: rt.Defaults.Separator,
+        normalizeWin32: true,
+        root: ''
+      }
     );
+
+    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
   });
 
   it('variables: comments', async () => {
@@ -470,11 +470,13 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(replaceTokenSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      { VAR1: 'value1', VAR2: 'value2' },
-      expect.anything()
-    );
+    expect(loadVariablesSpy).toHaveBeenCalledWith([JSON.stringify({ VAR1: 'value1', VAR2: 'value2' })], {
+      separator: rt.Defaults.Separator,
+      normalizeWin32: true,
+      root: ''
+    });
+
+    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
   });
 
   it('add-bom', async () => {
@@ -927,6 +929,8 @@ describe('run', () => {
       switch (name) {
         case 'separator':
           return ':';
+        case 'variables':
+          return '{}';
         default:
           return '';
       }
@@ -938,11 +942,13 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(replaceTokenSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      expect.objectContaining({ separator: ':' })
-    );
+    expect(loadVariablesSpy).toHaveBeenCalledWith(['{}'], {
+      separator: ':',
+      normalizeWin32: true,
+      root: ''
+    });
+
+    expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
   });
 
   it('token-pattern', async () => {

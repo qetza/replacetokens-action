@@ -63,7 +63,6 @@ export async function run(): Promise<void> {
       },
       recursive: core.getBooleanInput('recursive'),
       root: core.getInput('root'),
-      separator: core.getInput('separator') || rt.Defaults.Separator,
       token: {
         pattern:
           getChoiceInput('token-pattern', [
@@ -113,11 +112,8 @@ export async function run(): Promise<void> {
     };
 
     // load variables
-    const variables = await rt.parseVariables(getVariables(), {
-      normalizeWin32: true,
-      root: options.root,
-      separator: options.separator
-    });
+    const separator = core.getInput('separator') || rt.Defaults.Separator;
+    const variables = await getVariables(options.root, separator);
 
     // set telemetry attributes
     telemetryEvent.setAttributes({
@@ -133,7 +129,7 @@ export async function run(): Promise<void> {
       'missing-var-default': options.missing!.default,
       'missing-var-log': options.missing!.log,
       recusrive: options.recursive,
-      separator: options.separator,
+      separator: separator,
       'token-pattern': options.token!.pattern,
       'token-prefix': options.token!.prefix,
       'token-suffix': options.token!.suffix,
@@ -146,7 +142,7 @@ export async function run(): Promise<void> {
     });
 
     // replace tokens
-    const result = await rt.replaceTokens(sources, variables, options);
+    const result = await rt.replaceTokens(sources, (name: string) => variables[name], options);
 
     if (result.files === 0) {
       switch (ifNoFilesFound) {
@@ -216,10 +212,19 @@ function getSources(): string[] {
 var variableFilesCount = 0;
 var variablesEnvCount = 0;
 var inlineVariablesCount = 0;
-function getVariables(): string[] {
-  const input = core.getInput('variables', { required: true, trimWhitespace: true }) || '{}';
-  const variables = JSON.parse(stripJsonComments(input));
+async function getVariables(root?: string, separator?: string): Promise<{ [key: string]: string }> {
+  const input = core.getInput('variables', { required: true, trimWhitespace: true }) || '';
+  if (!input) return {};
 
+  return await rt.loadVariables(getVariablesFromJson(input), {
+    normalizeWin32: true,
+    root: root,
+    separator: separator
+  });
+}
+
+function getVariablesFromJson(input: string): string[] {
+  const variables = JSON.parse(stripJsonComments(input));
   const parse = (v: any): string => {
     if (typeof v === 'string') {
       switch (v[0]) {

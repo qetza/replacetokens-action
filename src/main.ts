@@ -63,6 +63,9 @@ export async function run(): Promise<void> {
       },
       recursive: core.getBooleanInput('recursive'),
       root: core.getInput('root'),
+      sources: {
+        caseInsensitive: core.getBooleanInput('case-insensitive-paths')
+      },
       token: {
         pattern:
           getChoiceInput('token-pattern', [
@@ -113,12 +116,13 @@ export async function run(): Promise<void> {
 
     // load variables
     const separator = core.getInput('separator') || rt.Defaults.Separator;
-    const variables = await getVariables(options.root, separator);
+    const variables = await getVariables(options.root, separator, options.sources!.caseInsensitive);
 
     // set telemetry attributes
     telemetryEvent.setAttributes({
       sources: sources.length,
       'add-bom': options.addBOM,
+      'case-insensitive-paths': options.sources!.caseInsensitive,
       'chars-to-escape': options.escape!.chars,
       encoding: options.encoding,
       escape: options.escape!.type,
@@ -212,11 +216,16 @@ function getSources(): string[] {
 var variableFilesCount = 0;
 var variablesEnvCount = 0;
 var inlineVariablesCount = 0;
-async function getVariables(root?: string, separator?: string): Promise<{ [key: string]: string }> {
+async function getVariables(
+  root?: string,
+  separator?: string,
+  caseInsensitive?: boolean
+): Promise<{ [key: string]: string }> {
   const input = core.getInput('variables', { required: true, trimWhitespace: true }) || '';
   if (!input) return {};
 
   return await rt.loadVariables(getVariablesFromJson(input), {
+    caseInsensitive: caseInsensitive,
     normalizeWin32: true,
     root: root,
     separator: separator

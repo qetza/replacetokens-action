@@ -52,6 +52,11 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     # Optional. Default: false
     add-bom: ''
 
+    # Enable case-insensitive file path matching in glob patterns (sources and variables).
+    #
+    # Optional. Default: false
+    case-insensitive-paths: ''
+
     # The characters to escape when using 'custom' escape.
     #
     # Optional.

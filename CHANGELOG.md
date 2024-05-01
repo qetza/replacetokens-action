@@ -1,6 +1,7 @@
 # Changelog
 ## v1.2.0
 - Upgrade package `@qetza/replacetokens` to `1.7.0`.
+- Add support for case insensitive path matching in _sources_ and _variables_.
 
 ## v1.1.2
 - Change telemetry provider.

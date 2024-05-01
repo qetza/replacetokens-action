@@ -42,6 +42,9 @@ inputs:
   add-bom:
     description: 'Add BOM when writing files.'
     default: 'false'
+  case-insensitive-paths:
+    description: 'Enable case-insensitive file path matching in glob patterns (sources and variables).'
+    default: 'false'
   chars-to-escape:
     description: 'The characters to escape when using ''custom'' escape.'
   encoding:

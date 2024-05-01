@@ -92,7 +92,7 @@ jobs:
           sources: |
             **/*.json;!**/*.DEV.json;!**/vars.json => _tmp/*.json
             **/*.xml;!**.dev.xml => _tmp/*.xml
-            **/*.YML => _tmp/*.yml
+            **/*.YML;!**/*vars.yml => _tmp/*.yml
           variables: >
             [
               ${{ toJSON(vars) }},
@@ -107,6 +107,7 @@ jobs:
           recursive: true
           transforms: true
           case-insensitive-paths: true
+          include-dot-paths: true
         env:
           ENV_VARS: '{ "var4": "env_value4" }'
 

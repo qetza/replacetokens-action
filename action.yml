@@ -54,7 +54,7 @@ inputs:
       Accepted values:
         - auto: detect encoding using js-chardet
         - any value supported by iconv-lite
-    default: auto
+    default: 'auto'
   escape:
     description: >
       Character escape type to apply on each value.
@@ -71,6 +71,9 @@ inputs:
   if-no-files-found:
     description: 'The behavior if no files are found: ignore, warn, error.'
     default: 'ignore'
+  include-dot-paths:
+    description: 'Include directories and files starting with a dot '.' in glob matching results for sources and additionalVariables.'
+    default: 'false'
   log-level:
     description: >
       The log level.

@@ -205,7 +205,8 @@ describe('run', () => {
       recursive: false,
       root: '',
       sources: {
-        caseInsensitive: false
+        caseInsensitive: false,
+        dot: false
       },
       token: {
         pattern: rt.TokenPatterns.Default,
@@ -247,7 +248,7 @@ describe('run', () => {
 
     expect(debugSpy).toHaveBeenCalledWith(
       expect.stringMatching(
-        /\[\{"eventType":"TokensReplaced","application":"replacetokens-action","version":"1\.\d+\.\d+","account":"c054bf9f6127dc352a184a29403ac9114f6c2a8e27cb467197cdfc1c3df119e4","pipeline":"59830ebc3a4184110566bf1a290d08473dfdcbd492ce498b14cd1a5e2fa2e441","host":"server","os":"Windows","sources":3,"add-bom":false,"case-insensitive-paths":false,"chars-to-escape":"","encoding":"auto","escape":"auto","escape-char":"","if-no-files-found":"ignore","log-level":"info","missing-var-action":"none","missing-var-default":"","missing-var-log":"warn","recusrive":false,"separator":"\.","token-pattern":"default","token-prefix":"","token-suffix":"","transforms":false,"transforms-prefix":"\(","transforms-suffix":"\)","variable-files":0,"variable-envs":0,"inline-variables":0,"output-defaults":1,"output-files":2,"output-replaced":3,"output-tokens":4,"output-transforms":5,"result":"success","duration":\d+(?:\.\d+)?}]/
+        /\[\{"eventType":"TokensReplaced","application":"replacetokens-action","version":"1\.\d+\.\d+","account":"c054bf9f6127dc352a184a29403ac9114f6c2a8e27cb467197cdfc1c3df119e4","pipeline":"59830ebc3a4184110566bf1a290d08473dfdcbd492ce498b14cd1a5e2fa2e441","host":"server","os":"Windows","sources":3,"add-bom":false,"case-insensitive-paths":false,"chars-to-escape":"","encoding":"auto","escape":"auto","escape-char":"","if-no-files-found":"ignore","include-dot-paths":false,"log-level":"info","missing-var-action":"none","missing-var-default":"","missing-var-log":"warn","recusrive":false,"separator":"\.","token-pattern":"default","token-prefix":"","token-suffix":"","transforms":false,"transforms-prefix":"\(","transforms-suffix":"\)","variable-files":0,"variable-envs":0,"inline-variables":0,"output-defaults":1,"output-files":2,"output-replaced":3,"output-tokens":4,"output-transforms":5,"result":"success","duration":\d+(?:\.\d+)?}]/
       )
     );
   });
@@ -324,7 +325,8 @@ describe('run', () => {
       separator: rt.Defaults.Separator,
       normalizeWin32: true,
       root: '',
-      caseInsensitive: false
+      caseInsensitive: false,
+      dot: false
     });
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
@@ -352,7 +354,8 @@ describe('run', () => {
       separator: rt.Defaults.Separator,
       normalizeWin32: true,
       root: '',
-      caseInsensitive: false
+      caseInsensitive: false,
+      dot: false
     });
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
@@ -380,7 +383,8 @@ describe('run', () => {
       separator: rt.Defaults.Separator,
       normalizeWin32: true,
       root: '',
-      caseInsensitive: false
+      caseInsensitive: false,
+      dot: false
     });
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
@@ -414,7 +418,8 @@ describe('run', () => {
       separator: rt.Defaults.Separator,
       normalizeWin32: true,
       root: '',
-      caseInsensitive: false
+      caseInsensitive: false,
+      dot: false
     });
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
@@ -452,7 +457,8 @@ describe('run', () => {
         separator: rt.Defaults.Separator,
         normalizeWin32: true,
         root: '',
-        caseInsensitive: false
+        caseInsensitive: false,
+        dot: false
       }
     );
 
@@ -486,7 +492,8 @@ describe('run', () => {
       separator: rt.Defaults.Separator,
       normalizeWin32: true,
       root: '',
-      caseInsensitive: false
+      caseInsensitive: false,
+      dot: false
     });
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
@@ -647,6 +654,41 @@ describe('run', () => {
       expect.anything(),
       expect.any(Function),
       expect.objectContaining({ escape: expect.objectContaining({ type: 'json' }) })
+    );
+  });
+
+  it('include-dot-paths', async () => {
+    // arrange
+    getBooleanInputSpy.mockImplementation(name => {
+      switch (name) {
+        case 'include-dot-paths':
+          return true;
+        default:
+          return false;
+      }
+    });
+
+    getInputSpy.mockImplementation(name => {
+      switch (name) {
+        case 'variables':
+          return '{}';
+        default:
+          return '';
+      }
+    });
+
+    // act
+    await run();
+
+    // assert
+    expect(setFailedSpy).not.toHaveBeenCalled();
+
+    expect(loadVariablesSpy).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ dot: true }));
+
+    expect(replaceTokenSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Function),
+      expect.objectContaining({ sources: expect.objectContaining({ dot: true }) })
     );
   });
 
@@ -993,12 +1035,7 @@ describe('run', () => {
     // assert
     expect(setFailedSpy).not.toHaveBeenCalled();
 
-    expect(loadVariablesSpy).toHaveBeenCalledWith(['{}'], {
-      separator: ':',
-      normalizeWin32: true,
-      root: '',
-      caseInsensitive: false
-    });
+    expect(loadVariablesSpy).toHaveBeenCalledWith(['{}'], expect.objectContaining({ separator: ':' }));
 
     expect(replaceTokenSpy).toHaveBeenCalledWith(expect.anything(), expect.any(Function), expect.anything());
   });

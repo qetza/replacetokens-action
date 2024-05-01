@@ -63665,7 +63665,8 @@ async function run() {
             recursive: core.getBooleanInput('recursive'),
             root: core.getInput('root'),
             sources: {
-                caseInsensitive: core.getBooleanInput('case-insensitive-paths')
+                caseInsensitive: core.getBooleanInput('case-insensitive-paths'),
+                dot: core.getBooleanInput('include-dot-paths')
             },
             token: {
                 pattern: getChoiceInput('token-pattern', [
@@ -63717,7 +63718,7 @@ async function run() {
         };
         // load variables
         const separator = core.getInput('separator') || rt.Defaults.Separator;
-        const variables = await getVariables(options.root, separator, options.sources.caseInsensitive);
+        const variables = await getVariables(options.root, separator, options.sources.caseInsensitive, options.sources.dot);
         // set telemetry attributes
         telemetryEvent.setAttributes({
             sources: sources.length,
@@ -63728,6 +63729,7 @@ async function run() {
             escape: options.escape.type,
             'escape-char': options.escape.escapeChar,
             'if-no-files-found': ifNoFilesFound,
+            'include-dot-paths': options.sources.dot,
             'log-level': logLevelStr,
             'missing-var-action': options.missing.action,
             'missing-var-default': options.missing.default,
@@ -63806,12 +63808,13 @@ function getSources() {
 var variableFilesCount = 0;
 var variablesEnvCount = 0;
 var inlineVariablesCount = 0;
-async function getVariables(root, separator, caseInsensitive) {
+async function getVariables(root, separator, caseInsensitive, dot) {
     const input = core.getInput('variables', { required: true, trimWhitespace: true }) || '';
     if (!input)
         return {};
     return await rt.loadVariables(getVariablesFromJson(input), {
         caseInsensitive: caseInsensitive,
+        dot: dot,
         normalizeWin32: true,
         root: root,
         separator: separator

@@ -98,6 +98,12 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     # Optional. Default: ignore
     if-no-files-found: ''
 
+    # Include directories and files starting with a dot '.' in glob matching results for sources 
+    # and additionalVariables.
+    #
+    # Optional. Default: false
+    include-dot-paths: ''
+
     # The log level.
     #
     # Accepted values:

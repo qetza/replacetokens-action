@@ -14904,7 +14904,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 var _a, _b;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.replaceTokens = exports.readTextFile = exports.parseVariables = exports.Counter = exports.Defaults = exports.Escapes = exports.MissingVariables = exports.TokenPatterns = exports.Encodings = void 0;
+exports.replaceTokens = exports.loadVariables = exports.Counter = exports.Defaults = exports.Escapes = exports.MissingVariables = exports.TokenPatterns = exports.Encodings = void 0;
 const fs = __importStar(__nccwpck_require__(73292));
 const iconv = __importStar(__nccwpck_require__(19032));
 const jschardet = __importStar(__nccwpck_require__(39783));
@@ -14966,39 +14966,53 @@ class Counter {
     }
 }
 exports.Counter = Counter;
-function parseVariables(variables, options) {
+function loadVariables(variables, options) {
     return __awaiter(this, void 0, void 0, function* () {
         variables = variables || ['{}'];
-        // load all inputs
-        let load = (v) => __awaiter(this, void 0, void 0, function* () {
-            if (v[0] === '@') {
-                // load from file
-                return yield loadVariablesFromFile(v.substring(1), options);
+        console.group('loading variables');
+        try {
+            // load all inputs
+            let load = (v) => __awaiter(this, void 0, void 0, function* () {
+                if (v[0] === '@') {
+                    // load from file
+                    return yield loadVariablesFromFile(v.substring(1), options);
+                }
+                else if (v[0] === '$') {
+                    // load from environment variable
+                    console.debug(`loading from env '${v.substring(1)}'`);
+                    return [JSON.parse((0, strip_json_comments_1.default)(process.env[v.substring(1)] || '{}'))];
+                }
+                // return given variables
+                return [JSON.parse((0, strip_json_comments_1.default)(v))];
+            });
+            // merge inputs
+            const vars = [];
+            for (const v of variables) {
+                vars.push(...(yield load(v)));
             }
-            else if (v[0] === '$') {
-                // load from environment variable
-                console.debug(`loading variables from env '${v.substring(1)}'`);
-                return [JSON.parse((0, strip_json_comments_1.default)(process.env[v.substring(1)] || '{}'))];
+            const result = flattenAndMerge((options === null || options === void 0 ? void 0 : options.separator) || Defaults.Separator, ...vars);
+            for (const key of Object.keys(result)) {
+                console.debug(`loaded '${key}'`);
             }
-            // return given variables
-            return [JSON.parse((0, strip_json_comments_1.default)(v))];
-        });
-        // merge inputs
-        const vars = [];
-        for (const v of variables) {
-            vars.push(...(yield load(v)));
+            const count = Object.keys(result).length;
+            console.info(`${count} variable${count > 1 ? 's' : ''} loaded`);
+            return result;
         }
-        return flattenAndMerge((options === null || options === void 0 ? void 0 : options.separator) || Defaults.Separator, ...vars);
+        finally {
+            console.groupEnd();
+        }
     });
 }
-exports.parseVariables = parseVariables;
+exports.loadVariables = loadVariables;
 function loadVariablesFromFile(name, options) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         if (os.platform() === 'win32' && (options === null || options === void 0 ? void 0 : options.normalizeWin32)) {
             name = name.replace(/\\/g, '/');
         }
         const files = yield fg.glob(name.split(';').map(v => v.trim()), {
             absolute: true,
+            caseSensitiveMatch: !((_a = options === null || options === void 0 ? void 0 : options.caseInsensitive) !== null && _a !== void 0 ? _a : false),
             cwd: options === null || options === void 0 ? void 0 : options.root,
             dot: options === null || options === void 0 ? void 0 : options.dot,
             onlyFiles: true,
@@ -15006,7 +15020,7 @@ function loadVariablesFromFile(name, options) {
         });
         const vars = [];
         for (const file of files) {
-            console.debug(`loading variables from file '${normalizePath(file)}'`);
+            console.debug(`loading from file '${normalizePath(file)}'`);
             const extension = path.extname(file).toLowerCase();
             const content = (yield readTextFile(file)).content;
             if (['.yml', '.yaml'].includes(extension)) {
@@ -15067,9 +15081,8 @@ function readTextFile(path, encoding = Encodings.Auto) {
         return { encoding: encoding, content: iconv.decode(data, encoding) };
     });
 }
-exports.readTextFile = readTextFile;
-function replaceTokens(sources, variables, options) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
+function replaceTokens(sources, getVariable, options) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0;
     return __awaiter(this, void 0, void 0, function* () {
         // set defaults
         sources = typeof sources === 'string' ? [sources] : sources;
@@ -15088,9 +15101,12 @@ function replaceTokens(sources, variables, options) {
                 log: (_m = (_l = options === null || options === void 0 ? void 0 : options.missing) === null || _l === void 0 ? void 0 : _l.log) !== null && _m !== void 0 ? _m : MissingVariables.Log.Warn
             },
             recursive: (_o = options === null || options === void 0 ? void 0 : options.recursive) !== null && _o !== void 0 ? _o : false,
-            separator: (_p = options === null || options === void 0 ? void 0 : options.separator) !== null && _p !== void 0 ? _p : Defaults.Separator,
+            sources: {
+                caseInsensitive: (_q = (_p = options === null || options === void 0 ? void 0 : options.sources) === null || _p === void 0 ? void 0 : _p.caseInsensitive) !== null && _q !== void 0 ? _q : false,
+                dot: (_s = (_r = options === null || options === void 0 ? void 0 : options.sources) === null || _r === void 0 ? void 0 : _r.dot) !== null && _s !== void 0 ? _s : false
+            },
             token: {
-                pattern: (_r = (_q = options === null || options === void 0 ? void 0 : options.token) === null || _q === void 0 ? void 0 : _q.pattern) !== null && _r !== void 0 ? _r : TokenPatterns.Default,
+                pattern: (_u = (_t = options === null || options === void 0 ? void 0 : options.token) === null || _t === void 0 ? void 0 : _t.pattern) !== null && _u !== void 0 ? _u : TokenPatterns.Default,
                 prefix: (() => {
                     var _a, _b, _c;
                     switch ((_b = (_a = options === null || options === void 0 ? void 0 : options.token) === null || _a === void 0 ? void 0 : _a.pattern) !== null && _b !== void 0 ? _b : TokenPatterns.Default) {
@@ -15129,9 +15145,9 @@ function replaceTokens(sources, variables, options) {
                 })()
             },
             transforms: {
-                enabled: (_t = (_s = options === null || options === void 0 ? void 0 : options.transforms) === null || _s === void 0 ? void 0 : _s.enabled) !== null && _t !== void 0 ? _t : false,
-                prefix: (_v = (_u = options === null || options === void 0 ? void 0 : options.transforms) === null || _u === void 0 ? void 0 : _u.prefix) !== null && _v !== void 0 ? _v : Defaults.TransformPrefix,
-                suffix: (_x = (_w = options === null || options === void 0 ? void 0 : options.transforms) === null || _w === void 0 ? void 0 : _w.suffix) !== null && _x !== void 0 ? _x : Defaults.TransformSuffix
+                enabled: (_w = (_v = options === null || options === void 0 ? void 0 : options.transforms) === null || _v === void 0 ? void 0 : _v.enabled) !== null && _w !== void 0 ? _w : false,
+                prefix: (_y = (_x = options === null || options === void 0 ? void 0 : options.transforms) === null || _x === void 0 ? void 0 : _x.prefix) !== null && _y !== void 0 ? _y : Defaults.TransformPrefix,
+                suffix: (_0 = (_z = options === null || options === void 0 ? void 0 : options.transforms) === null || _z === void 0 ? void 0 : _z.suffix) !== null && _0 !== void 0 ? _0 : Defaults.TransformSuffix
             }
         };
         // validate options
@@ -15143,7 +15159,6 @@ function replaceTokens(sources, variables, options) {
             throw new Error('token and transform suffixes cannot be the same');
         // initialize
         const counters = new Counter();
-        const vars = loadVariables(variables, options);
         const patterns = parseSources(sources);
         const tokenRegex = generateTokenRegex(options.token.prefix, options.token.suffix);
         const transformRegex = generateTransformRegex(options.transforms.prefix, options.transforms.suffix);
@@ -15152,6 +15167,8 @@ function replaceTokens(sources, variables, options) {
         for (const pattern of patterns) {
             var inputs = yield fg.glob(pattern.inputPatterns, {
                 absolute: true,
+                caseSensitiveMatch: !options.sources.caseInsensitive,
+                dot: options.sources.dot,
                 cwd: options.root,
                 onlyFiles: true,
                 unique: true
@@ -15172,7 +15189,7 @@ function replaceTokens(sources, variables, options) {
                         output = path.join(path.dirname(input), output);
                 }
                 // replace tokens in file
-                let c = yield replaceTokensInFile(normalizePath(input), normalizePath(output), vars, tokenRegex, transformRegex, customEscapeRegex, options);
+                let c = yield replaceTokensInFile(normalizePath(input), normalizePath(output), getVariable, tokenRegex, transformRegex, customEscapeRegex, options);
                 counters.defaults += c.defaults;
                 counters.replaced += c.replaced;
                 counters.tokens += c.tokens;
@@ -15184,25 +15201,6 @@ function replaceTokens(sources, variables, options) {
     });
 }
 exports.replaceTokens = replaceTokens;
-function loadVariables(variables, options) {
-    console.group('loading variables');
-    try {
-        // flatten with uppercase and stringify json variables
-        const data = flatten(variables !== null && variables !== void 0 ? variables : {}, options.separator);
-        // get variables with case-insensitive key and value
-        const vars = {};
-        for (const [key, value] of Object.entries(data)) {
-            vars[key] = value.value;
-            console.debug(`loaded '${value.name}'`);
-        }
-        const count = Object.keys(vars).length;
-        console.info(`${count} variable${count > 1 ? 's' : ''} loaded`);
-        return vars;
-    }
-    finally {
-        console.groupEnd();
-    }
-}
 function parseSources(sources) {
     sources = sources !== null && sources !== void 0 ? sources : [];
     let patterns = [];
@@ -15257,7 +15255,7 @@ function generateCustomEscapeRegex(chars) {
     console.debug(`custom espace '${regex.source}'`);
     return regex;
 }
-function replaceTokensInFile(input, output, variables, tokenRegex, transformRegex, customEscapeRegex, options) {
+function replaceTokensInFile(input, output, getVariable, tokenRegex, transformRegex, customEscapeRegex, options) {
     return __awaiter(this, void 0, void 0, function* () {
         console.group(`replacing tokens in '${input}'`);
         try {
@@ -15286,7 +15284,7 @@ function replaceTokensInFile(input, output, variables, tokenRegex, transformRege
                 })()
                 : options.escape.type;
             // replace tokens
-            let result = replaceTokensInString(file.content, variables, tokenRegex, transformRegex, customEscapeRegex, Object.assign(Object.assign({}, options), { escape: Object.assign(Object.assign({}, options.escape), { type: escapeType }) }));
+            let result = replaceTokensInString(file.content, getVariable, tokenRegex, transformRegex, customEscapeRegex, Object.assign(Object.assign({}, options), { escape: Object.assign(Object.assign({}, options.escape), { type: escapeType }) }));
             counters.defaults += result.counters.defaults;
             counters.replaced += result.counters.replaced;
             counters.tokens += result.counters.tokens;
@@ -15309,7 +15307,7 @@ function replaceTokensInFile(input, output, variables, tokenRegex, transformRege
         }
     });
 }
-function replaceTokensInString(content, variables, tokenRegex, transformRegex, customEscapeRegex, options, names = []) {
+function replaceTokensInString(content, getVariable, tokenRegex, transformRegex, customEscapeRegex, options, names = []) {
     let counters = new Counter();
     content = content.replace(tokenRegex, (match, name) => {
         var _a, _b;
@@ -15331,7 +15329,7 @@ function replaceTokensInString(content, variables, tokenRegex, transformRegex, c
         if (options.recursive && names.includes(key))
             throw new Error(`found cycle with token '${name}'`);
         // replace token
-        let value = variables[key];
+        let value = getVariable(key);
         if (value === undefined) {
             // variable not found
             const logVariableNotFound = () => {
@@ -15371,7 +15369,7 @@ function replaceTokensInString(content, variables, tokenRegex, transformRegex, c
             ++counters.replaced;
             // apply recursion
             if (options.recursive) {
-                let result = replaceTokensInString(value, variables, tokenRegex, transformRegex, customEscapeRegex, options, names.concat(key));
+                let result = replaceTokensInString(value, getVariable, tokenRegex, transformRegex, customEscapeRegex, options, names.concat(key));
                 value = result.content;
                 counters.defaults += result.counters.defaults;
                 counters.replaced += result.counters.replaced;
@@ -20544,7 +20542,7 @@ RedirectableRequest.prototype._processResponse = function (response) {
      redirectUrl.protocol !== "https:" ||
      redirectUrl.host !== currentHost &&
      !isSubdomain(redirectUrl.host, currentHost)) {
-    removeMatchingHeaders(/^(?:authorization|cookie)$/i, this._options.headers);
+    removeMatchingHeaders(/^(?:(?:proxy-)?authorization|cookie)$/i, this._options.headers);
   }
 
   // Evaluate the beforeRedirect callback
@@ -47111,6 +47109,132 @@ module.exports = buildConnector
 
 /***/ }),
 
+/***/ 14462:
+/***/ ((module) => {
+
+"use strict";
+
+
+/** @type {Record<string, string | undefined>} */
+const headerNameLowerCasedRecord = {}
+
+// https://developer.mozilla.org/docs/Web/HTTP/Headers
+const wellknownHeaderNames = [
+  'Accept',
+  'Accept-Encoding',
+  'Accept-Language',
+  'Accept-Ranges',
+  'Access-Control-Allow-Credentials',
+  'Access-Control-Allow-Headers',
+  'Access-Control-Allow-Methods',
+  'Access-Control-Allow-Origin',
+  'Access-Control-Expose-Headers',
+  'Access-Control-Max-Age',
+  'Access-Control-Request-Headers',
+  'Access-Control-Request-Method',
+  'Age',
+  'Allow',
+  'Alt-Svc',
+  'Alt-Used',
+  'Authorization',
+  'Cache-Control',
+  'Clear-Site-Data',
+  'Connection',
+  'Content-Disposition',
+  'Content-Encoding',
+  'Content-Language',
+  'Content-Length',
+  'Content-Location',
+  'Content-Range',
+  'Content-Security-Policy',
+  'Content-Security-Policy-Report-Only',
+  'Content-Type',
+  'Cookie',
+  'Cross-Origin-Embedder-Policy',
+  'Cross-Origin-Opener-Policy',
+  'Cross-Origin-Resource-Policy',
+  'Date',
+  'Device-Memory',
+  'Downlink',
+  'ECT',
+  'ETag',
+  'Expect',
+  'Expect-CT',
+  'Expires',
+  'Forwarded',
+  'From',
+  'Host',
+  'If-Match',
+  'If-Modified-Since',
+  'If-None-Match',
+  'If-Range',
+  'If-Unmodified-Since',
+  'Keep-Alive',
+  'Last-Modified',
+  'Link',
+  'Location',
+  'Max-Forwards',
+  'Origin',
+  'Permissions-Policy',
+  'Pragma',
+  'Proxy-Authenticate',
+  'Proxy-Authorization',
+  'RTT',
+  'Range',
+  'Referer',
+  'Referrer-Policy',
+  'Refresh',
+  'Retry-After',
+  'Sec-WebSocket-Accept',
+  'Sec-WebSocket-Extensions',
+  'Sec-WebSocket-Key',
+  'Sec-WebSocket-Protocol',
+  'Sec-WebSocket-Version',
+  'Server',
+  'Server-Timing',
+  'Service-Worker-Allowed',
+  'Service-Worker-Navigation-Preload',
+  'Set-Cookie',
+  'SourceMap',
+  'Strict-Transport-Security',
+  'Supports-Loading-Mode',
+  'TE',
+  'Timing-Allow-Origin',
+  'Trailer',
+  'Transfer-Encoding',
+  'Upgrade',
+  'Upgrade-Insecure-Requests',
+  'User-Agent',
+  'Vary',
+  'Via',
+  'WWW-Authenticate',
+  'X-Content-Type-Options',
+  'X-DNS-Prefetch-Control',
+  'X-Frame-Options',
+  'X-Permitted-Cross-Domain-Policies',
+  'X-Powered-By',
+  'X-Requested-With',
+  'X-XSS-Protection'
+]
+
+for (let i = 0; i < wellknownHeaderNames.length; ++i) {
+  const key = wellknownHeaderNames[i]
+  const lowerCasedKey = key.toLowerCase()
+  headerNameLowerCasedRecord[key] = headerNameLowerCasedRecord[lowerCasedKey] =
+    lowerCasedKey
+}
+
+// Note: object prototypes should not be able to be referenced. e.g. `Object#hasOwnProperty`.
+Object.setPrototypeOf(headerNameLowerCasedRecord, null)
+
+module.exports = {
+  wellknownHeaderNames,
+  headerNameLowerCasedRecord
+}
+
+
+/***/ }),
+
 /***/ 48045:
 /***/ ((module) => {
 
@@ -47941,6 +48065,7 @@ const { InvalidArgumentError } = __nccwpck_require__(48045)
 const { Blob } = __nccwpck_require__(14300)
 const nodeUtil = __nccwpck_require__(73837)
 const { stringify } = __nccwpck_require__(63477)
+const { headerNameLowerCasedRecord } = __nccwpck_require__(14462)
 
 const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(v => Number(v))
 
@@ -48148,6 +48273,15 @@ const KEEPALIVE_TIMEOUT_EXPR = /timeout=(\d+)/
 function parseKeepAliveTimeout (val) {
   const m = val.toString().match(KEEPALIVE_TIMEOUT_EXPR)
   return m ? parseInt(m[1], 10) * 1000 : null
+}
+
+/**
+ * Retrieves a header name and returns its lowercase value.
+ * @param {string | Buffer} value Header name
+ * @returns {string}
+ */
+function headerNameToString (value) {
+  return headerNameLowerCasedRecord[value] || value.toLowerCase()
 }
 
 function parseHeaders (headers, obj = {}) {
@@ -48421,6 +48555,7 @@ module.exports = {
   isIterable,
   isAsyncIterable,
   isDestroyed,
+  headerNameToString,
   parseRawHeaders,
   parseHeaders,
   parseKeepAliveTimeout,
@@ -55068,14 +55203,18 @@ const { isBlobLike, toUSVString, ReadableStreamFrom } = __nccwpck_require__(8398
 const assert = __nccwpck_require__(39491)
 const { isUint8Array } = __nccwpck_require__(29830)
 
+let supportedHashes = []
+
 // https://nodejs.org/api/crypto.html#determining-if-crypto-support-is-unavailable
 /** @type {import('crypto')|undefined} */
 let crypto
 
 try {
   crypto = __nccwpck_require__(6113)
+  const possibleRelevantHashes = ['sha256', 'sha384', 'sha512']
+  supportedHashes = crypto.getHashes().filter((hash) => possibleRelevantHashes.includes(hash))
+/* c8 ignore next 3 */
 } catch {
-
 }
 
 function responseURL (response) {
@@ -55603,66 +55742,56 @@ function bytesMatch (bytes, metadataList) {
     return true
   }
 
-  // 3. If parsedMetadata is the empty set, return true.
+  // 3. If response is not eligible for integrity validation, return false.
+  // TODO
+
+  // 4. If parsedMetadata is the empty set, return true.
   if (parsedMetadata.length === 0) {
     return true
   }
 
-  // 4. Let metadata be the result of getting the strongest
+  // 5. Let metadata be the result of getting the strongest
   //    metadata from parsedMetadata.
-  const list = parsedMetadata.sort((c, d) => d.algo.localeCompare(c.algo))
-  // get the strongest algorithm
-  const strongest = list[0].algo
-  // get all entries that use the strongest algorithm; ignore weaker
-  const metadata = list.filter((item) => item.algo === strongest)
+  const strongest = getStrongestMetadata(parsedMetadata)
+  const metadata = filterMetadataListByAlgorithm(parsedMetadata, strongest)
 
-  // 5. For each item in metadata:
+  // 6. For each item in metadata:
   for (const item of metadata) {
     // 1. Let algorithm be the alg component of item.
     const algorithm = item.algo
 
     // 2. Let expectedValue be the val component of item.
-    let expectedValue = item.hash
+    const expectedValue = item.hash
 
     // See https://github.com/web-platform-tests/wpt/commit/e4c5cc7a5e48093220528dfdd1c4012dc3837a0e
     // "be liberal with padding". This is annoying, and it's not even in the spec.
 
-    if (expectedValue.endsWith('==')) {
-      expectedValue = expectedValue.slice(0, -2)
-    }
-
     // 3. Let actualValue be the result of applying algorithm to bytes.
     let actualValue = crypto.createHash(algorithm).update(bytes).digest('base64')
 
-    if (actualValue.endsWith('==')) {
-      actualValue = actualValue.slice(0, -2)
+    if (actualValue[actualValue.length - 1] === '=') {
+      if (actualValue[actualValue.length - 2] === '=') {
+        actualValue = actualValue.slice(0, -2)
+      } else {
+        actualValue = actualValue.slice(0, -1)
+      }
     }
 
     // 4. If actualValue is a case-sensitive match for expectedValue,
     //    return true.
-    if (actualValue === expectedValue) {
-      return true
-    }
-
-    let actualBase64URL = crypto.createHash(algorithm).update(bytes).digest('base64url')
-
-    if (actualBase64URL.endsWith('==')) {
-      actualBase64URL = actualBase64URL.slice(0, -2)
-    }
-
-    if (actualBase64URL === expectedValue) {
+    if (compareBase64Mixed(actualValue, expectedValue)) {
       return true
     }
   }
 
-  // 6. Return false.
+  // 7. Return false.
   return false
 }
 
 // https://w3c.github.io/webappsec-subresource-integrity/#grammardef-hash-with-options
 // https://www.w3.org/TR/CSP2/#source-list-syntax
 // https://www.rfc-editor.org/rfc/rfc5234#appendix-B.1
-const parseHashWithOptions = /((?<algo>sha256|sha384|sha512)-(?<hash>[A-z0-9+/]{1}.*={0,2}))( +[\x21-\x7e]?)?/i
+const parseHashWithOptions = /(?<algo>sha256|sha384|sha512)-((?<hash>[A-Za-z0-9+/]+|[A-Za-z0-9_-]+)={0,2}(?:\s|$)( +[!-~]*)?)?/i
 
 /**
  * @see https://w3c.github.io/webappsec-subresource-integrity/#parse-metadata
@@ -55676,8 +55805,6 @@ function parseMetadata (metadata) {
   // 2. Let empty be equal to true.
   let empty = true
 
-  const supportedHashes = crypto.getHashes()
-
   // 3. For each token returned by splitting metadata on spaces:
   for (const token of metadata.split(' ')) {
     // 1. Set empty to false.
@@ -55687,7 +55814,11 @@ function parseMetadata (metadata) {
     const parsedToken = parseHashWithOptions.exec(token)
 
     // 3. If token does not parse, continue to the next token.
-    if (parsedToken === null || parsedToken.groups === undefined) {
+    if (
+      parsedToken === null ||
+      parsedToken.groups === undefined ||
+      parsedToken.groups.algo === undefined
+    ) {
       // Note: Chromium blocks the request at this point, but Firefox
       // gives a warning that an invalid integrity was given. The
       // correct behavior is to ignore these, and subsequently not
@@ -55696,11 +55827,11 @@ function parseMetadata (metadata) {
     }
 
     // 4. Let algorithm be the hash-algo component of token.
-    const algorithm = parsedToken.groups.algo
+    const algorithm = parsedToken.groups.algo.toLowerCase()
 
     // 5. If algorithm is a hash function recognized by the user
     //    agent, add the parsed token to result.
-    if (supportedHashes.includes(algorithm.toLowerCase())) {
+    if (supportedHashes.includes(algorithm)) {
       result.push(parsedToken.groups)
     }
   }
@@ -55711,6 +55842,82 @@ function parseMetadata (metadata) {
   }
 
   return result
+}
+
+/**
+ * @param {{ algo: 'sha256' | 'sha384' | 'sha512' }[]} metadataList
+ */
+function getStrongestMetadata (metadataList) {
+  // Let algorithm be the algo component of the first item in metadataList.
+  // Can be sha256
+  let algorithm = metadataList[0].algo
+  // If the algorithm is sha512, then it is the strongest
+  // and we can return immediately
+  if (algorithm[3] === '5') {
+    return algorithm
+  }
+
+  for (let i = 1; i < metadataList.length; ++i) {
+    const metadata = metadataList[i]
+    // If the algorithm is sha512, then it is the strongest
+    // and we can break the loop immediately
+    if (metadata.algo[3] === '5') {
+      algorithm = 'sha512'
+      break
+    // If the algorithm is sha384, then a potential sha256 or sha384 is ignored
+    } else if (algorithm[3] === '3') {
+      continue
+    // algorithm is sha256, check if algorithm is sha384 and if so, set it as
+    // the strongest
+    } else if (metadata.algo[3] === '3') {
+      algorithm = 'sha384'
+    }
+  }
+  return algorithm
+}
+
+function filterMetadataListByAlgorithm (metadataList, algorithm) {
+  if (metadataList.length === 1) {
+    return metadataList
+  }
+
+  let pos = 0
+  for (let i = 0; i < metadataList.length; ++i) {
+    if (metadataList[i].algo === algorithm) {
+      metadataList[pos++] = metadataList[i]
+    }
+  }
+
+  metadataList.length = pos
+
+  return metadataList
+}
+
+/**
+ * Compares two base64 strings, allowing for base64url
+ * in the second string.
+ *
+* @param {string} actualValue always base64
+ * @param {string} expectedValue base64 or base64url
+ * @returns {boolean}
+ */
+function compareBase64Mixed (actualValue, expectedValue) {
+  if (actualValue.length !== expectedValue.length) {
+    return false
+  }
+  for (let i = 0; i < actualValue.length; ++i) {
+    if (actualValue[i] !== expectedValue[i]) {
+      if (
+        (actualValue[i] === '+' && expectedValue[i] === '-') ||
+        (actualValue[i] === '/' && expectedValue[i] === '_')
+      ) {
+        continue
+      }
+      return false
+    }
+  }
+
+  return true
 }
 
 // https://w3c.github.io/webappsec-upgrade-insecure-requests/#upgrade-request
@@ -56128,7 +56335,8 @@ module.exports = {
   urlHasHttpsScheme,
   urlIsHttpHttpsScheme,
   readAllBytes,
-  normalizeMethodRecord
+  normalizeMethodRecord,
+  parseMetadata
 }
 
 
@@ -58215,12 +58423,17 @@ function parseLocation (statusCode, headers) {
 
 // https://tools.ietf.org/html/rfc7231#section-6.4.4
 function shouldRemoveHeader (header, removeContent, unknownOrigin) {
-  return (
-    (header.length === 4 && header.toString().toLowerCase() === 'host') ||
-    (removeContent && header.toString().toLowerCase().indexOf('content-') === 0) ||
-    (unknownOrigin && header.length === 13 && header.toString().toLowerCase() === 'authorization') ||
-    (unknownOrigin && header.length === 6 && header.toString().toLowerCase() === 'cookie')
-  )
+  if (header.length === 4) {
+    return util.headerNameToString(header) === 'host'
+  }
+  if (removeContent && util.headerNameToString(header).startsWith('content-')) {
+    return true
+  }
+  if (unknownOrigin && (header.length === 13 || header.length === 6 || header.length === 19)) {
+    const name = util.headerNameToString(header)
+    return name === 'authorization' || name === 'cookie' || name === 'proxy-authorization'
+  }
+  return false
 }
 
 // https://tools.ietf.org/html/rfc7231#section-6.4
@@ -63451,7 +63664,6 @@ async function run() {
             },
             recursive: core.getBooleanInput('recursive'),
             root: core.getInput('root'),
-            separator: core.getInput('separator') || rt.Defaults.Separator,
             token: {
                 pattern: getChoiceInput('token-pattern', [
                     rt.TokenPatterns.AzurePipelines,
@@ -63501,11 +63713,8 @@ async function run() {
                 core.endGroup();
         };
         // load variables
-        const variables = await rt.parseVariables(getVariables(), {
-            normalizeWin32: true,
-            root: options.root,
-            separator: options.separator
-        });
+        const separator = core.getInput('separator') || rt.Defaults.Separator;
+        const variables = await getVariables(options.root, separator);
         // set telemetry attributes
         telemetryEvent.setAttributes({
             sources: sources.length,
@@ -63520,7 +63729,7 @@ async function run() {
             'missing-var-default': options.missing.default,
             'missing-var-log': options.missing.log,
             recusrive: options.recursive,
-            separator: options.separator,
+            separator: separator,
             'token-pattern': options.token.pattern,
             'token-prefix': options.token.prefix,
             'token-suffix': options.token.suffix,
@@ -63532,7 +63741,7 @@ async function run() {
             'inline-variables': inlineVariablesCount
         });
         // replace tokens
-        const result = await rt.replaceTokens(sources, variables, options);
+        const result = await rt.replaceTokens(sources, (name) => variables[name], options);
         if (result.files === 0) {
             switch (ifNoFilesFound) {
                 case 'warn':
@@ -63593,8 +63802,17 @@ function getSources() {
 var variableFilesCount = 0;
 var variablesEnvCount = 0;
 var inlineVariablesCount = 0;
-function getVariables() {
-    const input = core.getInput('variables', { required: true, trimWhitespace: true }) || '{}';
+async function getVariables(root, separator) {
+    const input = core.getInput('variables', { required: true, trimWhitespace: true }) || '';
+    if (!input)
+        return {};
+    return await rt.loadVariables(getVariablesFromJson(input), {
+        normalizeWin32: true,
+        root: root,
+        separator: separator
+    });
+}
+function getVariablesFromJson(input) {
     const variables = JSON.parse((0, strip_json_comments_1.default)(input));
     const parse = (v) => {
         if (typeof v === 'string') {
@@ -63803,7 +64021,7 @@ const sdk_trace_base_1 = __nccwpck_require__(29253);
 const crypto = __importStar(__nccwpck_require__(6113));
 const axios_1 = __importDefault(__nccwpck_require__(88757));
 const application = 'replacetokens-action';
-const version = '1.1.2';
+const version = '1.2.0';
 const endpoint = 'https://insights-collector.eu01.nr-data.net/v1/accounts/4392697/events';
 const key = 'eu01xxc28887c2d47d9719ed24a74df5FFFFNRAL';
 const timeout = 3000;

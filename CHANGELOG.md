@@ -1,4 +1,7 @@
 # Changelog
+## v1.2.0
+- Upgrade package `@qetza/replacetokens` to `1.7.0`.
+
 ## v1.1.2
 - Change telemetry provider.
 

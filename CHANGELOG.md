@@ -3,6 +3,7 @@
 - Upgrade package `@qetza/replacetokens` to `1.7.0`.
 - Add support for case insensitive path matching in _sources_ and _variables_.
 - Add support for matching directories and files starting with a dot in _sources_ and _variables_.
+- Fix _if-no-files-found_ when set to `warn`.
 
 ## v1.1.2
 - Change telemetry provider.

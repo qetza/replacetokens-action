@@ -164,7 +164,7 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     # Optional. Default: ${{ github.workspace }}
     root: ''
 
-    # The separtor to use when flattening keys in variables.
+    # The separator to use when flattening keys in variables.
     #
     # Example: '{ "key": { "array": ["a1", "a2"], "sub": "s1" } }' will be flatten as 
     # '{ "key.array.0": "a1", "key.array.1": "a2", "key.sub": "s1" }'

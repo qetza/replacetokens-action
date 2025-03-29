@@ -1,4 +1,8 @@
 # Changelog
+## v1.2.1
+- Upgrade package `@qetza/replacetokens` to `1.8.1`.
+- Fix issue with spaces in patterns.
+
 ## v1.2.0
 - Upgrade package `@qetza/replacetokens` to `1.7.0`.
 - Add support for case insensitive path matching in _sources_ and _variables_.

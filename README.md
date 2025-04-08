@@ -176,7 +176,7 @@ Please refer to the [release page](https://github.com/qetza/replacetokens-action
     #
     # Accepted values:
     #   - default: #{ ... }#
-    #   - azurepipelines: $( ... )
+    #   - azpipelines: $( ... )
     #   - custom: token-prefix ... token-suffix
     #   - doublebraces: {{ ... }}
     #   - doubleunderscores: __ ... __

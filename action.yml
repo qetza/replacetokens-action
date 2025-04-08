@@ -134,7 +134,7 @@ inputs:
 
       Accepted values:
         - default: #{ ... }#
-        - azurepipelines: $( ... )
+        - azpipelines: $( ... )
         - custom: token-prefix ... token-suffix
         - doublebraces: {{ ... }}
         - doubleunderscores: __ ... __

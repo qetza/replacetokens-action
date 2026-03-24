@@ -5,7 +5,7 @@ import * as crypto from 'crypto';
 import axios from 'axios';
 
 const application = 'replacetokens-action';
-const version = '1.0.0';
+const version = '2.0.0';
 const endpoint = 'https://insights-collector.eu01.nr-data.net/v1/accounts/4392697/events';
 const key = 'eu01xxc28887c2d47d9719ed24a74df5FFFFNRAL';
 const timeout = 3000;

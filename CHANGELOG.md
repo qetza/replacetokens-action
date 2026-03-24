@@ -1,4 +1,8 @@
 # Changelog
+## v2.0.0
+- **Breaking change**: Add support for node 24, requires [Actions Runner v2.328.0](https://github.com/actions/runner/releases/tag/v2.328.0) or later.
+- Upgrade package `@qetza/replacetokens` to `1.9.0`
+
 ## v1.2.1
 - Upgrade package `@qetza/replacetokens` to `1.8.1`.
 - Fix issue with spaces in patterns.

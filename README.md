@@ -6,9 +6,6 @@ This GitHub Action replaces tokens in text files with variables and/or secrets.
 ## What's new
 Please refer to the [release page](https://github.com/qetza/replacetokens-action/releases/latest) for the latest release notes.
 
-## Known issues
-- Deprecation warning for `url.parse()`, waiting for [axios](https://www.npmjs.com/package/axios) fix.
-
 ## Usage
 ### Inputs
 ```yaml
